@@ -141,6 +141,13 @@ export class Customer extends Actor {
     });
   }
 
+  /** Butiken stänger – gå hem (räknas inte som förlorad kund). */
+  forceLeave(): void {
+    if (this.state === 'paying' || this.state === 'leaving') return;
+    if (this.inQueue) this.checkout.removeFromQueue(this);
+    this.leave();
+  }
+
   /** Tröttnade på att köa – lämnar utan att handla. */
   private abandonQueue(): void {
     this.checkout.removeFromQueue(this);

@@ -61,9 +61,10 @@ export class HUD {
     this.update();
   }
 
-  update(): void {
+  update(timeText?: string): void {
     this.moneyText.setText(`${this.state.money} kr`);
-    this.dayText.setText(`Dag ${this.state.day}  •  ⭐ ${Math.round(this.state.rating)}`);
+    const clock = timeText ? `  •  ${timeText}` : '';
+    this.dayText.setText(`Dag ${this.state.day}${clock}  •  ⭐ ${Math.round(this.state.rating)}`);
     const s = this.state.stats;
     this.statsText.setText(
       `Kö: ${this.checkout.queue.length}   Betjänade: ${s.servedToday}   Förlorade: ${s.lostToday}`,

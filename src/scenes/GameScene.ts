@@ -6,8 +6,10 @@ import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
 import { Manager } from '../entities/Manager';
 import { Shelf } from '../entities/Shelf';
 import { Checkout } from '../entities/Checkout';
+import { Delivery } from '../entities/Delivery';
 import { CustomerSystem } from '../systems/CustomerSystem';
 import { EconomySystem } from '../systems/EconomySystem';
+import { TimeSystem } from '../systems/TimeSystem';
 import { HUD } from '../ui/HUD';
 
 const SHELF_POSITIONS: Record<string, { gx: number; gy: number }> = {
@@ -22,7 +24,11 @@ export class GameScene extends Phaser.Scene {
   private checkout!: Checkout;
   private customerSystem!: CustomerSystem;
   private economy!: EconomySystem;
+  private timeSystem!: TimeSystem;
   private hud!: HUD;
+  private delivery?: Delivery;
+  private closingHandled = false;
+  private customersSentHome = false;
 
   constructor() {
     super('Game');
@@ -30,8 +36,18 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.shelves.clear();
-    this.state = createInitialState(BALANCE.startMoney, PRODUCTS);
+    this.delivery = undefined;
+    this.closingHandled = false;
+    this.customersSentHome = false;
+
+    let state = this.registry.get('gameState') as GameState | undefined;
+    if (!state) {
+      state = createInitialState(BALANCE.startMoney, PRODUCTS);
+      this.registry.set('gameState', state);
+    }
+    this.state = state;
     this.economy = new EconomySystem(this.state);
+    this.timeSystem = new TimeSystem();
 
     this.drawFloor();
 
@@ -60,6 +76,8 @@ export class GameScene extends Phaser.Scene {
     );
     this.customerSystem.start();
 
+    this.scheduleDelivery();
+
     this.hud = new HUD(this, this.state, this.checkout);
 
     // Klick på golvet (inte på en station) → gå dit.
@@ -76,10 +94,96 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
+    this.timeSystem.tick(delta);
+    this.handleClosing();
     this.tryStartPayment();
-    this.hud.update();
+    this.hud.update(this.timeSystem.isClosed ? 'STÄNGT' : this.timeSystem.clockText);
   }
+
+  // --- Dagcykel ---
+
+  private handleClosing(): void {
+    if (!this.timeSystem.isClosed) return;
+
+    if (!this.closingHandled) {
+      this.closingHandled = true;
+      this.customerSystem.stop();
+      this.showClosedBanner();
+    }
+
+    // Skicka hem kvarvarande kunder om de dröjer för länge efter stängning.
+    if (!this.customersSentHome && this.timeSystem.msSinceClose > BALANCE.closingGraceMs) {
+      this.customersSentHome = true;
+      for (const c of [...this.customerSystem.customers]) c.forceLeave();
+    }
+
+    if (this.customerSystem.customers.length === 0 && !this.manager.busy) {
+      this.endDay();
+    }
+  }
+
+  private endDay(): void {
+    // Ej upplastad leverans bärs in i lagret automatiskt vid stängning.
+    if (this.delivery) {
+      this.storeDeliveryContents(this.delivery.contents);
+      this.delivery.destroy();
+      this.delivery = undefined;
+    }
+    this.scene.start('Evening');
+  }
+
+  private showClosedBanner(): void {
+    this.add
+      .text(this.scale.width / 2, 76, 'STÄNGT – sista kunderna betjänas', {
+        fontFamily: 'sans-serif',
+        fontSize: '22px',
+        color: '#ffcc80',
+        fontStyle: 'bold',
+        stroke: '#1e1e2e',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(10002);
+  }
+
+  // --- Leverans ---
+
+  private scheduleDelivery(): void {
+    const order = this.state.pendingOrder;
+    if (Object.values(order).every((n) => !n)) return;
+    this.time.delayedCall(BALANCE.dayDurationMs * BALANCE.deliveryArrivalFraction, () => {
+      this.delivery = new Delivery(this, 1, 7, order);
+      this.delivery.on('pointerdown', () => this.onDeliveryClicked());
+      this.state.pendingOrder = {};
+      this.floatText(this.delivery.x, this.delivery.y - 70, 'Varor har kommit!', '#ffe082');
+    });
+  }
+
+  private onDeliveryClicked(): void {
+    const delivery = this.delivery;
+    if (!delivery || this.manager.busy) return;
+    const spot = delivery.standPoint;
+    this.manager.walkTo(spot.x, spot.y, () => {
+      if (!this.delivery) return;
+      this.manager.busy = true;
+      this.showProgress(delivery.x, delivery.y - 64, BALANCE.unloadTimeMs, () => {
+        this.storeDeliveryContents(delivery.contents);
+        this.floatText(delivery.x, delivery.y - 64, 'Inlastat i lagret!', '#aed581');
+        delivery.destroy();
+        this.delivery = undefined;
+        this.manager.busy = false;
+      });
+    });
+  }
+
+  private storeDeliveryContents(contents: Record<string, number>): void {
+    for (const [id, units] of Object.entries(contents)) {
+      this.state.storage[id] = (this.state.storage[id] ?? 0) + units;
+    }
+  }
+
+  // --- Ritning & interaktion ---
 
   private drawFloor(): void {
     for (let gx = 0; gx < GRID_W; gx++) {
@@ -114,17 +218,20 @@ export class GameScene extends Phaser.Scene {
     this.manager.walkTo(spot.x, spot.y, () => this.restock(shelf));
   }
 
+  /** Fyller på hyllan från lagerrummet (varor köps in via kvällsbeställningen). */
   private restock(shelf: Shelf): void {
     if (shelf.missingUnits <= 0) return;
+    const available = this.state.storage[shelf.product.id] ?? 0;
+    if (available <= 0) {
+      this.floatText(shelf.x, shelf.y - 60, 'Lagret är tomt!', '#ef9a9a');
+      return;
+    }
     this.manager.busy = true;
     this.showProgress(shelf.x, shelf.y - 60, BALANCE.restockTimeMs, () => {
-      const units = this.economy.buyStock(shelf.product, shelf.missingUnits);
-      if (units > 0) {
-        shelf.addStock(units);
-        this.floatText(shelf.x, shelf.y - 60, `-${units * shelf.product.buyPrice} kr`, '#ef9a9a');
-      } else {
-        this.floatText(shelf.x, shelf.y - 60, 'Inte råd!', '#ef9a9a');
-      }
+      const units = Math.min(shelf.missingUnits, this.state.storage[shelf.product.id] ?? 0);
+      this.state.storage[shelf.product.id] -= units;
+      shelf.addStock(units);
+      this.floatText(shelf.x, shelf.y - 60, `+${units} ${shelf.product.name}`, '#aed581');
       this.manager.busy = false;
     });
   }

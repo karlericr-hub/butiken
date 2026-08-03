@@ -23,6 +23,13 @@ export interface GameState {
   upgrades: string[];
   staff: StaffMember[];
   isParcelAgent: boolean;
+  /** Varor i lagerrummet (levererade men inte utställda), per produkt-id. */
+  storage: Record<string, number>;
+  /** Beställning som levereras under nästa dag, per produkt-id. */
+  pendingOrder: Record<string, number>;
+  /** Antal kvällar i rad med negativt saldo. */
+  debtEvenings: number;
+  loanTaken: boolean;
   difficulty: {
     spawnRate: number;
     patienceModifier: number;
@@ -44,6 +51,10 @@ export function createInitialState(startMoney: number, products: Product[]): Gam
     upgrades: [],
     staff: [],
     isParcelAgent: false,
+    storage: Object.fromEntries(products.map((p) => [p.id, p.shelfCapacity])),
+    pendingOrder: {},
+    debtEvenings: 0,
+    loanTaken: false,
     difficulty: {
       spawnRate: 1,
       patienceModifier: 1,
