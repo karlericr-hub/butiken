@@ -15,7 +15,10 @@ export class BootScene extends Phaser.Scene {
     this.makePerson();
     this.makeTill();
     this.makeParcel();
-    this.scene.start('Game');
+    this.makeShadow();
+    this.makeCoin();
+    this.makeMini();
+    this.scene.start('Menu');
   }
 
   private makeTile(): void {
@@ -83,6 +86,55 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xd7ccc8, 1);
     g.fillRect(8, 2, 3, 14);
     g.generateTexture('parcel', 18, 16);
+    g.destroy();
+  }
+
+  private makeShadow(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 1);
+    g.fillEllipse(14, 5, 28, 10);
+    g.generateTexture('shadow', 28, 10);
+    g.destroy();
+  }
+
+  private makeCoin(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0xffb300, 1);
+    g.fillCircle(5, 5, 5);
+    g.fillStyle(0xffd54f, 1);
+    g.fillCircle(5, 5, 3.4);
+    g.generateTexture('coin', 10, 10);
+    g.destroy();
+  }
+
+  /** Liten varulåda som visas på hylltopparna (tintas per vara). */
+  private makeMini(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 1);
+    g.beginPath();
+    g.moveTo(7, 0);
+    g.lineTo(14, 3.5);
+    g.lineTo(7, 7);
+    g.lineTo(0, 3.5);
+    g.closePath();
+    g.fillPath();
+    g.fillStyle(0xd0d0d0, 1);
+    g.beginPath();
+    g.moveTo(0, 3.5);
+    g.lineTo(7, 7);
+    g.lineTo(7, 12);
+    g.lineTo(0, 9);
+    g.closePath();
+    g.fillPath();
+    g.fillStyle(0xb0b0b0, 1);
+    g.beginPath();
+    g.moveTo(7, 7);
+    g.lineTo(14, 3.5);
+    g.lineTo(14, 9);
+    g.lineTo(7, 12);
+    g.closePath();
+    g.fillPath();
+    g.generateTexture('mini', 14, 12);
     g.destroy();
   }
 

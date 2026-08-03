@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { GameState } from '../state/GameState';
+import { SaveSystem } from '../systems/SaveSystem';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -8,6 +9,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(): void {
     const state = this.registry.get('gameState') as GameState;
+    SaveSystem.clear();
     const W = this.scale.width;
     const H = this.scale.height;
 
@@ -50,7 +52,7 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
     btn.on('pointerdown', () => {
       this.registry.remove('gameState');
-      this.scene.start('Game');
+      this.scene.start('Menu');
     });
   }
 }

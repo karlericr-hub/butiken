@@ -13,6 +13,8 @@ import { StaffSystem } from '../systems/StaffSystem';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TimeSystem } from '../systems/TimeSystem';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
+import { DifficultySystem } from '../systems/DifficultySystem';
+import { sfx } from '../systems/Sfx';
 import { HUD } from '../ui/HUD';
 
 const SHELF_POSITIONS: Record<string, { gx: number; gy: number }> = {
@@ -31,6 +33,7 @@ export class GameScene extends Phaser.Scene {
   private economy!: EconomySystem;
   private timeSystem!: TimeSystem;
   private upgrades!: UpgradeSystem;
+  private difficulty!: DifficultySystem;
   private hud!: HUD;
   private delivery?: Delivery;
   private parcelDesk?: ParcelDesk;
@@ -63,6 +66,7 @@ export class GameScene extends Phaser.Scene {
     this.upgrades = new UpgradeSystem(this.state);
 
     this.drawFloor();
+    this.drawWalls();
 
     for (const product of this.state.products) {
       const pos = SHELF_POSITIONS[product.id];
@@ -105,9 +109,13 @@ export class GameScene extends Phaser.Scene {
     );
     this.customerSystem.start();
 
+    this.difficulty = new DifficultySystem(this.state, this.checkout, this.shelves);
+
     this.scheduleDelivery();
 
     this.hud = new HUD(this, this.state, this.checkout);
+
+    this.showPendingHint();
 
     // Klick på golvet (inte på en station) → gå dit.
     this.input.on(
@@ -129,6 +137,7 @@ export class GameScene extends Phaser.Scene {
     this.tryStartPayment();
     this.tryStartParcelService();
     this.staffSystem.update(time);
+    if (!this.timeSystem.isClosed) this.difficulty.update(time);
     this.hud.update(this.timeSystem.isClosed ? 'STÄNGT' : this.timeSystem.clockText);
   }
 
@@ -161,7 +170,32 @@ export class GameScene extends Phaser.Scene {
       this.delivery.destroy();
       this.delivery = undefined;
     }
+    this.difficulty.adjustAfterDay();
     this.scene.start('Evening');
+  }
+
+  /** Vänlig hint från det adaptiva svårighetssystemet. */
+  private showPendingHint(): void {
+    const hint = this.state.pendingHint;
+    if (!hint) return;
+    this.state.pendingHint = undefined;
+    const banner = this.add
+      .text(this.scale.width / 2, 84, hint, {
+        fontFamily: 'sans-serif',
+        fontSize: '17px',
+        color: '#fff8e1',
+        backgroundColor: '#5d4037',
+        padding: { x: 14, y: 8 },
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(10003);
+    this.tweens.add({
+      targets: banner,
+      alpha: 0,
+      delay: 6000,
+      duration: 800,
+      onComplete: () => banner.destroy(),
+    });
   }
 
   private showClosedBanner(): void {
@@ -188,6 +222,9 @@ export class GameScene extends Phaser.Scene {
       this.delivery.on('pointerdown', () => this.onDeliveryClicked());
       this.state.pendingOrder = {};
       this.floatText(this.delivery.x, this.delivery.y - 70, 'Varor har kommit!', '#ffe082');
+      sfx.ding();
+      this.delivery.setScale(0);
+      this.tweens.add({ targets: this.delivery, scale: 1, duration: 400, ease: 'Back.easeOut' });
     });
   }
 
@@ -201,6 +238,7 @@ export class GameScene extends Phaser.Scene {
       this.showProgress(delivery.x, delivery.y - 64, BALANCE.unloadTimeMs, () => {
         this.storeDeliveryContents(delivery.contents);
         this.floatText(delivery.x, delivery.y - 64, 'Inlastat i lagret!', '#aed581');
+        sfx.pop();
         delivery.destroy();
         this.delivery = undefined;
         this.manager.busy = false;
@@ -222,7 +260,7 @@ export class GameScene extends Phaser.Scene {
         const pos = isoToScreen(gx, gy);
         const tile = this.add.sprite(pos.x, pos.y + 16, 'tile');
         tile.setOrigin(0.5, 0.5);
-        tile.setTint((gx + gy) % 2 === 0 ? 0xe9e1d1 : 0xdfd6c3);
+        tile.setTint((gx + gy) % 2 === 0 ? 0xf0e7d3 : 0xe5dbc2);
         tile.setDepth(-1000);
       }
     }
@@ -231,9 +269,69 @@ export class GameScene extends Phaser.Scene {
       const pos = isoToScreen(0, gy);
       const mat = this.add.sprite(pos.x, pos.y + 16, 'tile');
       mat.setOrigin(0.5, 0.5);
-      mat.setTint(0xa1887f);
+      mat.setTint(0x9c786c);
       mat.setDepth(-999);
     }
+  }
+
+  /** Bakväggar längs butikens två bortre kanter, med dörröppning. */
+  private drawWalls(): void {
+    const g = this.add.graphics();
+    g.setDepth(-960);
+    const H = 46;
+
+    // Nordöstra väggen (längs gy = 0)
+    g.fillStyle(0xcabfa6, 1);
+    for (let gx = 0; gx < GRID_W; gx++) {
+      const p = isoToScreen(gx, 0);
+      g.beginPath();
+      g.moveTo(p.x, p.y);
+      g.lineTo(p.x + 32, p.y + 16);
+      g.lineTo(p.x + 32, p.y + 16 - H);
+      g.lineTo(p.x, p.y - H);
+      g.closePath();
+      g.fillPath();
+    }
+
+    // Nordvästra väggen (längs gx = 0), med lucka för dörren vid gy 8–9
+    g.fillStyle(0xdcd1b6, 1);
+    for (let gy = 0; gy < GRID_H; gy++) {
+      if (gy >= 8) continue;
+      const p = isoToScreen(0, gy);
+      g.beginPath();
+      g.moveTo(p.x, p.y);
+      g.lineTo(p.x - 32, p.y + 16);
+      g.lineTo(p.x - 32, p.y + 16 - H);
+      g.lineTo(p.x, p.y - H);
+      g.closePath();
+      g.fillPath();
+    }
+
+    // Takkant som knyter ihop väggarna
+    g.lineStyle(3, 0xb0a488, 1);
+    const nw = isoToScreen(0, 0);
+    const ne = isoToScreen(GRID_W, 0);
+    const w2 = isoToScreen(0, 8);
+    g.beginPath();
+    g.moveTo(w2.x - 32, w2.y + 16 - H);
+    g.lineTo(nw.x, nw.y - H);
+    g.lineTo(ne.x, ne.y - H);
+    g.strokePath();
+  }
+
+  /** Myntregn vid en lyckad försäljning. */
+  private coinBurst(x: number, y: number): void {
+    const particles = this.add.particles(x, y, 'coin', {
+      speed: { min: 90, max: 190 },
+      angle: { min: 230, max: 310 },
+      gravityY: 520,
+      lifespan: 650,
+      scale: { start: 1, end: 0.4 },
+      emitting: false,
+    });
+    particles.setDepth(9600);
+    particles.explode(12);
+    this.time.delayedCall(900, () => particles.destroy());
   }
 
   private onCheckoutClicked(): void {
@@ -271,6 +369,7 @@ export class GameScene extends Phaser.Scene {
       this.state.storage[shelf.product.id] -= units;
       shelf.addStock(units);
       this.floatText(shelf.x, shelf.y - 60, `+${units} ${shelf.product.name}`, '#aed581');
+      sfx.pop();
       this.manager.busy = false;
     });
   }
@@ -293,6 +392,8 @@ export class GameScene extends Phaser.Scene {
     this.showProgress(this.checkout.x, this.checkout.y - 64, this.upgrades.payTimeMs, () => {
       const total = this.economy.sell(customer.basket);
       this.floatText(this.checkout.x, this.checkout.y - 64, `+${total} kr`, '#aed581');
+      this.coinBurst(this.checkout.x, this.checkout.y - 50);
+      sfx.chaChing();
       customer.finishPayment();
       this.checkout.dequeue();
       this.paymentBusy = false;
@@ -314,6 +415,8 @@ export class GameScene extends Phaser.Scene {
     this.showProgress(desk.x, desk.y - 64, BALANCE.parcelHandleTimeMs, () => {
       const fee = this.economy.parcelIncome();
       this.floatText(desk.x, desk.y - 64, `+${fee} kr`, '#aed581');
+      this.coinBurst(desk.x, desk.y - 50);
+      sfx.chaChing();
       customer.finishPayment();
       desk.dequeue();
       this.parcelBusy = false;

@@ -6,6 +6,7 @@ import type { ParcelDesk } from '../entities/ParcelDesk';
 import { isProductUnlocked, type GameState } from '../state/GameState';
 import type { EconomySystem } from './EconomySystem';
 import type { UpgradeSystem } from './UpgradeSystem';
+import { sfx } from './Sfx';
 import { BALANCE } from '../config/balance';
 
 /** Spawnar kunder (och paketkunder) och håller reda på alla i butiken. */
@@ -81,7 +82,10 @@ export class CustomerSystem {
 
   private makeCallbacks() {
     return {
-      onLost: () => this.economy.registerLostCustomer(),
+      onLost: () => {
+        this.economy.registerLostCustomer();
+        sfx.sad();
+      },
       onGone: (c: Customer) => {
         const idx = this.customers.indexOf(c);
         if (idx !== -1) this.customers.splice(idx, 1);

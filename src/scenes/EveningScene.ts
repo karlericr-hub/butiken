@@ -3,6 +3,8 @@ import { isProductUnlocked, type GameState } from '../state/GameState';
 import { BALANCE } from '../config/balance';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
+import { sfx } from '../systems/Sfx';
+import { SaveSystem } from '../systems/SaveSystem';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -335,6 +337,7 @@ export class EveningScene extends Phaser.Scene {
     });
     bg.on('pointerdown', () => {
       if (this.upgradeSystem.buy(def)) {
+        sfx.chaChing();
         this.upgradeRefreshers.forEach((r) => r());
         // Låste köpet upp en ny vara? Då ska den gå att beställa direkt.
         if (this.state.products.some((p) => p.requiresUpgrade === def.id)) {
@@ -401,6 +404,10 @@ export class EveningScene extends Phaser.Scene {
       revenueToday: 0,
       costsToday: cost,
     };
+
+    // Autospar i slutet av varje dag.
+    SaveSystem.save(this.state);
+
     this.scene.start('Game');
   }
 
@@ -426,7 +433,10 @@ export class EveningScene extends Phaser.Scene {
       .setOrigin(0.5);
     bg.on('pointerover', () => bg.setFillStyle(0x4caf50));
     bg.on('pointerout', () => bg.setFillStyle(0x43a047));
-    bg.on('pointerdown', onClick);
+    bg.on('pointerdown', () => {
+      sfx.pop();
+      onClick();
+    });
     return [bg, txt];
   }
 }
