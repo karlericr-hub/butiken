@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
     this.timeSystem = new TimeSystem();
     this.upgrades = new UpgradeSystem(this.state);
 
+    this.drawBackdrop();
     this.drawFloor();
     this.drawWalls();
     this.placeProps();
@@ -184,8 +185,8 @@ export class GameScene extends Phaser.Scene {
       .text(this.scale.width / 2, 84, hint, {
         fontFamily: 'sans-serif',
         fontSize: '17px',
-        color: '#fff8e1',
-        backgroundColor: '#5d4037',
+        color: '#ffffff',
+        backgroundColor: '#ff8f00',
         padding: { x: 14, y: 8 },
       })
       .setOrigin(0.5, 0)
@@ -204,9 +205,9 @@ export class GameScene extends Phaser.Scene {
       .text(this.scale.width / 2, 76, 'STÄNGT – sista kunderna betjänas', {
         fontFamily: 'sans-serif',
         fontSize: '22px',
-        color: '#ffcc80',
+        color: '#d84315',
         fontStyle: 'bold',
-        stroke: '#1e1e2e',
+        stroke: '#ffffff',
         strokeThickness: 4,
       })
       .setOrigin(0.5, 0)
@@ -222,7 +223,7 @@ export class GameScene extends Phaser.Scene {
       this.delivery = new Delivery(this, 1, 7, order);
       this.delivery.on('pointerdown', () => this.onDeliveryClicked());
       this.state.pendingOrder = {};
-      this.floatText(this.delivery.x, this.delivery.y - 70, 'Varor har kommit!', '#ffe082');
+      this.floatText(this.delivery.x, this.delivery.y - 70, 'Varor har kommit!', '#ff8f00');
       sfx.ding();
       this.delivery.setScale(0);
       this.tweens.add({ targets: this.delivery, scale: 1, duration: 400, ease: 'Back.easeOut' });
@@ -238,7 +239,7 @@ export class GameScene extends Phaser.Scene {
       this.manager.busy = true;
       this.showProgress(delivery.x, delivery.y - 64, BALANCE.unloadTimeMs, () => {
         this.storeDeliveryContents(delivery.contents);
-        this.floatText(delivery.x, delivery.y - 64, 'Inlastat i lagret!', '#aed581');
+        this.floatText(delivery.x, delivery.y - 64, 'Inlastat i lagret!', '#43a047');
         sfx.pop();
         delivery.destroy();
         this.delivery = undefined;
@@ -254,6 +255,43 @@ export class GameScene extends Phaser.Scene {
   }
 
   // --- Ritning & interaktion ---
+
+  /** Himmel med moln och en gräsplätt som butiken står på. */
+  private drawBackdrop(): void {
+    const clouds: [number, number, number][] = [
+      [120, 120, 0.9],
+      [430, 88, 0.65],
+      [840, 140, 0.8],
+      [180, 560, 0.7],
+      [790, 590, 0.85],
+    ];
+    for (const [x, y, s] of clouds) {
+      const g = this.add.graphics();
+      g.setDepth(-1200);
+      g.fillStyle(0xffffff, 0.85);
+      g.fillCircle(x, y, 20 * s);
+      g.fillCircle(x + 24 * s, y + 4 * s, 15 * s);
+      g.fillCircle(x - 23 * s, y + 5 * s, 13 * s);
+      g.fillRoundedRect(x - 28 * s, y, 56 * s, 16 * s, 8 * s);
+      this.tweens.add({
+        targets: g,
+        x: 16,
+        duration: 7000 + s * 4000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Mjuk grön platta under butiken så den inte svävar i himlen.
+    const centre = isoToScreen(GRID_W / 2, GRID_H / 2);
+    const ground = this.add.graphics();
+    ground.setDepth(-1100);
+    ground.fillStyle(0x9ccc65, 1);
+    ground.fillEllipse(centre.x, centre.y + 30, 860, 500);
+    ground.fillStyle(0xaed581, 1);
+    ground.fillEllipse(centre.x, centre.y + 18, 800, 460);
+  }
 
   private drawFloor(): void {
     for (let gx = 0; gx < GRID_W; gx++) {
@@ -421,7 +459,7 @@ export class GameScene extends Phaser.Scene {
     if (shelf.missingUnits <= 0) return;
     const available = this.state.storage[shelf.product.id] ?? 0;
     if (available <= 0) {
-      this.floatText(shelf.x, shelf.y - 60, 'Lagret är tomt!', '#ef9a9a');
+      this.floatText(shelf.x, shelf.y - 60, 'Lagret är tomt!', '#e53935');
       return;
     }
     this.manager.busy = true;
@@ -429,7 +467,7 @@ export class GameScene extends Phaser.Scene {
       const units = Math.min(shelf.missingUnits, this.state.storage[shelf.product.id] ?? 0);
       this.state.storage[shelf.product.id] -= units;
       shelf.addStock(units);
-      this.floatText(shelf.x, shelf.y - 60, `+${units} ${shelf.product.name}`, '#aed581');
+      this.floatText(shelf.x, shelf.y - 60, `+${units} ${shelf.product.name}`, '#43a047');
       sfx.pop();
       this.manager.busy = false;
     });
@@ -452,7 +490,7 @@ export class GameScene extends Phaser.Scene {
     customer.startPaying();
     this.showProgress(this.checkout.x, this.checkout.y - 64, this.upgrades.payTimeMs, () => {
       const total = this.economy.sell(customer.basket);
-      this.floatText(this.checkout.x, this.checkout.y - 64, `+${total} kr`, '#aed581');
+      this.floatText(this.checkout.x, this.checkout.y - 64, `+${total} kr`, '#43a047');
       this.coinBurst(this.checkout.x, this.checkout.y - 50);
       sfx.chaChing();
       customer.finishPayment();
@@ -475,7 +513,7 @@ export class GameScene extends Phaser.Scene {
     customer.startPaying();
     this.showProgress(desk.x, desk.y - 64, BALANCE.parcelHandleTimeMs, () => {
       const fee = this.economy.parcelIncome();
-      this.floatText(desk.x, desk.y - 64, `+${fee} kr`, '#aed581');
+      this.floatText(desk.x, desk.y - 64, `+${fee} kr`, '#43a047');
       this.coinBurst(desk.x, desk.y - 50);
       sfx.chaChing();
       customer.finishPayment();
@@ -515,8 +553,8 @@ export class GameScene extends Phaser.Scene {
         fontSize: '16px',
         color,
         fontStyle: 'bold',
-        stroke: '#1e1e2e',
-        strokeThickness: 3,
+        stroke: '#ffffff',
+        strokeThickness: 3.5,
       })
       .setOrigin(0.5, 1)
       .setDepth(9500);
