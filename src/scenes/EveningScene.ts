@@ -58,7 +58,7 @@ export class EveningScene extends Phaser.Scene {
     }
 
     const W = this.scale.width;
-    this.add.rectangle(0, 0, W, this.scale.height, 0x1e1e2e).setOrigin(0, 0);
+    this.add.rectangle(0, 0, W, this.scale.height, 0xffecc7).setOrigin(0, 0);
 
     // Kortpaneler bakom de tre kolumnerna
     const cards = this.add.graphics();
@@ -67,9 +67,9 @@ export class EveningScene extends Phaser.Scene {
       [COL_ORDER_X - 14, 332],
       [COL_UPGRADES_X - 14, 316],
     ] as [number, number][]) {
-      cards.fillStyle(0x242938, 1);
+      cards.fillStyle(0xfffdf6, 1);
       cards.fillRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
-      cards.lineStyle(1, 0x3a4158, 1);
+      cards.lineStyle(1, 0xe6d5ae, 1);
       cards.strokeRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
     }
 
@@ -77,7 +77,7 @@ export class EveningScene extends Phaser.Scene {
       .text(W / 2, 24, `🌙 Dag ${this.state.day} är slut!`, {
         fontFamily: 'sans-serif',
         fontSize: '28px',
-        color: '#ffd54f',
+        color: '#ef6c00',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
@@ -100,24 +100,24 @@ export class EveningScene extends Phaser.Scene {
     this.add.text(x, y, 'Dagens resultat', {
       fontFamily: 'sans-serif',
       fontSize: '18px',
-      color: '#ffffff',
+      color: '#4e342e',
       fontStyle: 'bold',
     });
 
     const rows: [string, string, string][] = [
-      ['Försäljning', `+${s.revenueToday} kr`, '#aed581'],
-      ['Varuinköp', `-${purchases} kr`, '#ef9a9a'],
-      ['Hyra', `-${BALANCE.rentPerDay} kr`, '#ef9a9a'],
+      ['Försäljning', `+${s.revenueToday} kr`, '#2e7d32'],
+      ['Varuinköp', `-${purchases} kr`, '#c62828'],
+      ['Hyra', `-${BALANCE.rentPerDay} kr`, '#c62828'],
     ];
     if (this.wagesToday > 0) {
-      rows.push(['Löner', `-${this.wagesToday} kr`, '#ef9a9a']);
+      rows.push(['Löner', `-${this.wagesToday} kr`, '#c62828']);
     }
     rows.push(
-      ['Vinst', `${profit >= 0 ? '+' : ''}${profit} kr`, profit >= 0 ? '#aed581' : '#ef9a9a'],
+      ['Vinst', `${profit >= 0 ? '+' : ''}${profit} kr`, profit >= 0 ? '#2e7d32' : '#c62828'],
       ['', '', '#ffffff'],
-      ['Betjänade kunder', `${s.servedToday}`, '#b0bec5'],
-      ['Förlorade kunder', `${s.lostToday}`, '#b0bec5'],
-      ['Butiksbetyg', `⭐ ${Math.round(this.state.rating)}`, '#ffd54f'],
+      ['Betjänade kunder', `${s.servedToday}`, '#6d4c41'],
+      ['Förlorade kunder', `${s.lostToday}`, '#6d4c41'],
+      ['Butiksbetyg', `⭐ ${Math.round(this.state.rating)}`, '#ef6c00'],
     );
 
     rows.forEach(([label, value, color], i) => {
@@ -126,7 +126,7 @@ export class EveningScene extends Phaser.Scene {
       this.add.text(x, ry, label, {
         fontFamily: 'sans-serif',
         fontSize: '14px',
-        color: '#eceff1',
+        color: '#4e342e',
       });
       this.add
         .text(x + 268, ry, value, {
@@ -142,7 +142,7 @@ export class EveningScene extends Phaser.Scene {
     this.add.text(x, kassaY, 'Kassa', {
       fontFamily: 'sans-serif',
       fontSize: '15px',
-      color: '#eceff1',
+      color: '#4e342e',
       fontStyle: 'bold',
     });
     this.kassaText = this.add
@@ -157,7 +157,7 @@ export class EveningScene extends Phaser.Scene {
 
   private refreshKassaText(): void {
     this.kassaText.setText(`${this.state.money} kr`);
-    this.kassaText.setColor(this.state.money >= 0 ? '#ffd54f' : '#ef5350');
+    this.kassaText.setColor(this.state.money >= 0 ? '#ef6c00' : '#c62828');
   }
 
   /** Byggs om när en uppgradering låser upp en ny vara. */
@@ -175,7 +175,7 @@ export class EveningScene extends Phaser.Scene {
       this.add.text(x, y, 'Beställ varor', {
         fontFamily: 'sans-serif',
         fontSize: '18px',
-        color: '#ffffff',
+        color: '#4e342e',
         fontStyle: 'bold',
       }),
     );
@@ -183,7 +183,7 @@ export class EveningScene extends Phaser.Scene {
       this.add.text(x, y + 26, 'Leverans imorgon förmiddag', {
         fontFamily: 'sans-serif',
         fontSize: '12px',
-        color: '#90a4ae',
+        color: '#8d6e63',
       }),
     );
 
@@ -196,7 +196,7 @@ export class EveningScene extends Phaser.Scene {
         this.add.text(x, ry, `${p.name}  (${p.buyPrice} kr/st)`, {
           fontFamily: 'sans-serif',
           fontSize: '15px',
-          color: '#eceff1',
+          color: '#4e342e',
           fontStyle: 'bold',
         }),
       );
@@ -208,7 +208,7 @@ export class EveningScene extends Phaser.Scene {
           {
             fontFamily: 'sans-serif',
             fontSize: '12px',
-            color: '#90a4ae',
+            color: '#8d6e63',
           },
         ),
       );
@@ -218,7 +218,7 @@ export class EveningScene extends Phaser.Scene {
         .text(x + 231, ry + 12, '0', {
           fontFamily: 'sans-serif',
           fontSize: '18px',
-          color: '#ffffff',
+          color: '#4e342e',
           fontStyle: 'bold',
         })
         .setOrigin(0.5);
@@ -231,14 +231,14 @@ export class EveningScene extends Phaser.Scene {
     this.totalText = this.add.text(x, totalY, '', {
       fontFamily: 'sans-serif',
       fontSize: '15px',
-      color: '#ffd54f',
+      color: '#ef6c00',
       fontStyle: 'bold',
     });
     c.add(this.totalText);
     this.moneyAfterText = this.add.text(x, totalY + 24, '', {
       fontFamily: 'sans-serif',
       fontSize: '13px',
-      color: '#90a4ae',
+      color: '#8d6e63',
     });
     c.add(this.moneyAfterText);
     this.refreshOrderTexts();
@@ -271,14 +271,14 @@ export class EveningScene extends Phaser.Scene {
     this.add.text(x, y, 'Uppgraderingar', {
       fontFamily: 'sans-serif',
       fontSize: '18px',
-      color: '#ffffff',
+      color: '#4e342e',
       fontStyle: 'bold',
     });
 
     this.tooltip = this.add.text(x, y + 34 + UPGRADES.length * 36 + 8, '', {
       fontFamily: 'sans-serif',
       fontSize: '12px',
-      color: '#b0bec5',
+      color: '#6d4c41',
       wordWrap: { width: 285 },
     });
 
@@ -289,15 +289,15 @@ export class EveningScene extends Phaser.Scene {
 
   private buildUpgradeRow(def: UpgradeDef, x: number, y: number): void {
     const bg = this.add
-      .rectangle(x, y, 285, 32, 0x2e3448)
+      .rectangle(x, y, 285, 32, 0xf7f0dd)
       .setOrigin(0, 0)
-      .setStrokeStyle(1, 0x3e4663)
+      .setStrokeStyle(1, 0xdccba4)
       .setInteractive({ useHandCursor: true });
     const name = this.add
       .text(x + 10, y + 16, def.name, {
         fontFamily: 'sans-serif',
         fontSize: '13px',
-        color: '#eceff1',
+        color: '#4e342e',
         fontStyle: 'bold',
       })
       .setOrigin(0, 0.5);
@@ -315,26 +315,26 @@ export class EveningScene extends Phaser.Scene {
       const reqMet = this.upgradeSystem.requirementsMet(def);
       if (owned || pendingAd) {
         status.setText(pendingAd ? '✔ Beställd' : '✔ Köpt');
-        status.setColor('#81c784');
-        name.setColor('#78909c');
-        bg.setFillStyle(0x252a3a);
+        status.setColor('#2e7d32');
+        name.setColor('#a1887f');
+        bg.setFillStyle(0xefe6d2);
       } else if (!reqMet) {
         status.setText('🔒');
-        status.setColor('#78909c');
-        name.setColor('#78909c');
-        bg.setFillStyle(0x252a3a);
+        status.setColor('#a1887f');
+        name.setColor('#a1887f');
+        bg.setFillStyle(0xefe6d2);
       } else {
         status.setText(`${def.cost} kr`);
-        status.setColor(this.state.money >= def.cost ? '#ffd54f' : '#ef9a9a');
-        name.setColor('#eceff1');
-        bg.setFillStyle(0x2e3448);
+        status.setColor(this.state.money >= def.cost ? '#ef6c00' : '#c62828');
+        name.setColor('#4e342e');
+        bg.setFillStyle(0xf7f0dd);
       }
     };
     refresh();
     this.upgradeRefreshers.push(refresh);
 
     bg.on('pointerover', () => {
-      bg.setStrokeStyle(1, 0x5c6bc0);
+      bg.setStrokeStyle(1, 0xffa726);
       let text = def.description;
       if (!this.upgradeSystem.requirementsMet(def)) {
         const names = (def.requires ?? [])
@@ -345,7 +345,7 @@ export class EveningScene extends Phaser.Scene {
       this.tooltip.setText(text);
     });
     bg.on('pointerout', () => {
-      bg.setStrokeStyle(1, 0x3e4663);
+      bg.setStrokeStyle(1, 0xdccba4);
       this.tooltip.setText('');
     });
     bg.on('pointerdown', () => {
@@ -372,7 +372,7 @@ export class EveningScene extends Phaser.Scene {
         {
           fontFamily: 'sans-serif',
           fontSize: '14px',
-          color: '#ef9a9a',
+          color: '#c62828',
           fontStyle: 'bold',
           wordWrap: { width: 280 },
         },
@@ -390,7 +390,7 @@ export class EveningScene extends Phaser.Scene {
           this.state.loanTaken = true;
           this.state.money += BALANCE.emergencyLoanAmount;
           this.warningText?.setText('Nödlånet är insatt på kontot. Lycka till!');
-          this.warningText?.setColor('#aed581');
+          this.warningText?.setColor('#2e7d32');
           this.refreshOrderTexts();
           this.refreshKassaText();
         },

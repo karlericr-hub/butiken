@@ -53,7 +53,7 @@ export class StaffSystem {
         if (units > 0) {
           this.state.storage[shelf.product.id] -= units;
           shelf.addStock(units);
-          this.scene.floatText(shelf.x - 20, shelf.y - 60, `+${units}`, '#ffcc80');
+          this.scene.floatText(shelf.x - 20, shelf.y - 60, `+${units}`, '#fb8c00');
         }
         r.working = false;
       });

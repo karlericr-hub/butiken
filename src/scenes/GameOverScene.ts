@@ -13,13 +13,19 @@ export class GameOverScene extends Phaser.Scene {
     const W = this.scale.width;
     const H = this.scale.height;
 
-    this.add.rectangle(0, 0, W, H, 0x1e1e2e).setOrigin(0, 0);
+    this.add.rectangle(0, 0, W, H, 0xffe3d4).setOrigin(0, 0);
+
+    const card = this.add.graphics();
+    card.fillStyle(0xfffdf6, 1);
+    card.fillRoundedRect(W / 2 - 250, H / 2 - 170, 500, 300, 24);
+    card.lineStyle(3, 0xffffff, 1);
+    card.strokeRoundedRect(W / 2 - 250, H / 2 - 170, 500, 300, 24);
 
     this.add
       .text(W / 2, H / 2 - 120, '💸 Konkurs!', {
         fontFamily: 'sans-serif',
         fontSize: '44px',
-        color: '#ef5350',
+        color: '#e64a19',
         fontStyle: 'bold',
       })
       .setOrigin(0.5);
@@ -32,7 +38,7 @@ export class GameOverScene extends Phaser.Scene {
         {
           fontFamily: 'sans-serif',
           fontSize: '20px',
-          color: '#eceff1',
+          color: '#4e342e',
           align: 'center',
         },
       )
@@ -40,8 +46,10 @@ export class GameOverScene extends Phaser.Scene {
 
     const btn = this.add
       .rectangle(W / 2, H / 2 + 70, 240, 52, 0x43a047)
-      .setStrokeStyle(2, 0x2e7d32)
+      .setStrokeStyle(3, 0x2e7d32)
       .setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => btn.setFillStyle(0x4caf50));
+    btn.on('pointerout', () => btn.setFillStyle(0x43a047));
     this.add
       .text(W / 2, H / 2 + 70, 'Spela igen', {
         fontFamily: 'sans-serif',
