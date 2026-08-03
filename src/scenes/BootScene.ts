@@ -18,7 +18,7 @@ export class BootScene extends Phaser.Scene {
     this.makeShadow();
     this.makeCoin();
     this.makeMini();
-    this.scene.start('Game');
+    this.scene.start('Menu');
   }
 
   private makeTile(): void {

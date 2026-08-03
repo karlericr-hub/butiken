@@ -4,6 +4,7 @@ import { BALANCE } from '../config/balance';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { sfx } from '../systems/Sfx';
+import { SaveSystem } from '../systems/SaveSystem';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -403,6 +404,10 @@ export class EveningScene extends Phaser.Scene {
       revenueToday: 0,
       costsToday: cost,
     };
+
+    // Autospar i slutet av varje dag.
+    SaveSystem.save(this.state);
+
     this.scene.start('Game');
   }
 

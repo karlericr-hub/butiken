@@ -40,6 +40,8 @@ export interface GameState {
   adCampaignPending: boolean;
   /** Reklamkampanj aktiv idag. */
   adActiveToday: boolean;
+  /** Vänlig hint som visas vid nästa dags start (sätts av DifficultySystem). */
+  pendingHint?: string;
   difficulty: {
     spawnRate: number;
     patienceModifier: number;

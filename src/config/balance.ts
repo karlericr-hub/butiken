@@ -50,6 +50,25 @@ export const BALANCE = {
   parcelHandleTimeMs: 1300,
   parcelQueueMax: 4,
 
+  /** Adaptiv svårighet: mjuka justeringar varje kväll. */
+  difficulty: {
+    sampleIntervalMs: 2000,
+    /** Spelaren KÄMPAR: över dessa trösklar lättar spelet. */
+    strugglingLostShare: 0.35,
+    strugglingQueueAvg: 3.5,
+    /** Spelaren HAR DET LÄTT: under dessa trösklar (och med vinst) skärps spelet. */
+    cruisingLostShare: 0.1,
+    cruisingQueueAvg: 1.2,
+    /** Hög andel tid med tomma hyllor ger en påfyllningshint. */
+    emptyShelfHintShare: 0.3,
+    spawnStep: 0.1,
+    patienceStep: 0.08,
+    spawnRateMin: 0.6,
+    spawnRateMax: 2.2,
+    patienceModMin: 0.8,
+    patienceModMax: 1.5,
+  },
+
   rentPerDay: 80,
   emergencyLoanAmount: 300,
   /** Antal kvällar i rad med negativt saldo innan konkurs. */

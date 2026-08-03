@@ -13,6 +13,7 @@ import { StaffSystem } from '../systems/StaffSystem';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TimeSystem } from '../systems/TimeSystem';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
+import { DifficultySystem } from '../systems/DifficultySystem';
 import { sfx } from '../systems/Sfx';
 import { HUD } from '../ui/HUD';
 
@@ -32,6 +33,7 @@ export class GameScene extends Phaser.Scene {
   private economy!: EconomySystem;
   private timeSystem!: TimeSystem;
   private upgrades!: UpgradeSystem;
+  private difficulty!: DifficultySystem;
   private hud!: HUD;
   private delivery?: Delivery;
   private parcelDesk?: ParcelDesk;
@@ -107,9 +109,13 @@ export class GameScene extends Phaser.Scene {
     );
     this.customerSystem.start();
 
+    this.difficulty = new DifficultySystem(this.state, this.checkout, this.shelves);
+
     this.scheduleDelivery();
 
     this.hud = new HUD(this, this.state, this.checkout);
+
+    this.showPendingHint();
 
     // Klick på golvet (inte på en station) → gå dit.
     this.input.on(
@@ -131,6 +137,7 @@ export class GameScene extends Phaser.Scene {
     this.tryStartPayment();
     this.tryStartParcelService();
     this.staffSystem.update(time);
+    if (!this.timeSystem.isClosed) this.difficulty.update(time);
     this.hud.update(this.timeSystem.isClosed ? 'STÄNGT' : this.timeSystem.clockText);
   }
 
@@ -163,7 +170,32 @@ export class GameScene extends Phaser.Scene {
       this.delivery.destroy();
       this.delivery = undefined;
     }
+    this.difficulty.adjustAfterDay();
     this.scene.start('Evening');
+  }
+
+  /** Vänlig hint från det adaptiva svårighetssystemet. */
+  private showPendingHint(): void {
+    const hint = this.state.pendingHint;
+    if (!hint) return;
+    this.state.pendingHint = undefined;
+    const banner = this.add
+      .text(this.scale.width / 2, 84, hint, {
+        fontFamily: 'sans-serif',
+        fontSize: '17px',
+        color: '#fff8e1',
+        backgroundColor: '#5d4037',
+        padding: { x: 14, y: 8 },
+      })
+      .setOrigin(0.5, 0)
+      .setDepth(10003);
+    this.tweens.add({
+      targets: banner,
+      alpha: 0,
+      delay: 6000,
+      duration: 800,
+      onComplete: () => banner.destroy(),
+    });
   }
 
   private showClosedBanner(): void {
