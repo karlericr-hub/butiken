@@ -7,6 +7,12 @@ export interface Product {
   shelfCapacity: number;
   currentStock: number;
   unlockLevel: number;
+  /** Uppgradering som måste ägas för att varan ska säljas. */
+  requiresUpgrade?: string;
+}
+
+export function isProductUnlocked(state: GameState, product: Product): boolean {
+  return !product.requiresUpgrade || state.upgrades.includes(product.requiresUpgrade);
 }
 
 export interface StaffMember {
@@ -30,6 +36,10 @@ export interface GameState {
   /** Antal kvällar i rad med negativt saldo. */
   debtEvenings: number;
   loanTaken: boolean;
+  /** Reklamkampanj beställd i kväll (gäller imorgon). */
+  adCampaignPending: boolean;
+  /** Reklamkampanj aktiv idag. */
+  adActiveToday: boolean;
   difficulty: {
     spawnRate: number;
     patienceModifier: number;
@@ -51,10 +61,14 @@ export function createInitialState(startMoney: number, products: Product[]): Gam
     upgrades: [],
     staff: [],
     isParcelAgent: false,
-    storage: Object.fromEntries(products.map((p) => [p.id, p.shelfCapacity])),
+    storage: Object.fromEntries(
+      products.map((p) => [p.id, p.requiresUpgrade ? 0 : p.shelfCapacity]),
+    ),
     pendingOrder: {},
     debtEvenings: 0,
     loanTaken: false,
+    adCampaignPending: false,
+    adActiveToday: false,
     difficulty: {
       spawnRate: 1,
       patienceModifier: 1,

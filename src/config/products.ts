@@ -21,9 +21,21 @@ export const PRODUCTS: Product[] = [
     currentStock: 8,
     unlockLevel: 0,
   },
+  {
+    id: 'godis',
+    name: 'Godis',
+    category: 'godis',
+    buyPrice: 5,
+    sellPrice: 12,
+    shelfCapacity: 12,
+    currentStock: 0,
+    unlockLevel: 1,
+    requiresUpgrade: 'fler_varutyper',
+  },
 ];
 
 export const PRODUCT_COLORS: Record<string, number> = {
   mjolk: 0x7ec8e3,
   brod: 0xe8a15c,
+  godis: 0xf48fb1,
 };

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createInitialState, type GameState } from '../state/GameState';
+import { createInitialState, isProductUnlocked, type GameState } from '../state/GameState';
 import { PRODUCTS } from '../config/products';
 import { BALANCE } from '../config/balance';
 import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
@@ -10,11 +10,13 @@ import { Delivery } from '../entities/Delivery';
 import { CustomerSystem } from '../systems/CustomerSystem';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TimeSystem } from '../systems/TimeSystem';
+import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { HUD } from '../ui/HUD';
 
 const SHELF_POSITIONS: Record<string, { gx: number; gy: number }> = {
   mjolk: { gx: 3, gy: 2 },
   brod: { gx: 6, gy: 2 },
+  godis: { gx: 1, gy: 3 },
 };
 
 export class GameScene extends Phaser.Scene {
@@ -25,6 +27,7 @@ export class GameScene extends Phaser.Scene {
   private customerSystem!: CustomerSystem;
   private economy!: EconomySystem;
   private timeSystem!: TimeSystem;
+  private upgrades!: UpgradeSystem;
   private hud!: HUD;
   private delivery?: Delivery;
   private closingHandled = false;
@@ -48,12 +51,13 @@ export class GameScene extends Phaser.Scene {
     this.state = state;
     this.economy = new EconomySystem(this.state);
     this.timeSystem = new TimeSystem();
+    this.upgrades = new UpgradeSystem(this.state);
 
     this.drawFloor();
 
     for (const product of this.state.products) {
       const pos = SHELF_POSITIONS[product.id];
-      if (!pos) continue;
+      if (!pos || !isProductUnlocked(this.state, product)) continue;
       const shelf = new Shelf(this, pos.gx, pos.gy, product);
       shelf.on('pointerdown', () => this.onShelfClicked(shelf));
       this.shelves.set(product.id, shelf);
@@ -227,7 +231,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.manager.busy = true;
-    this.showProgress(shelf.x, shelf.y - 60, BALANCE.restockTimeMs, () => {
+    this.showProgress(shelf.x, shelf.y - 60, this.upgrades.restockTimeMs, () => {
       const units = Math.min(shelf.missingUnits, this.state.storage[shelf.product.id] ?? 0);
       this.state.storage[shelf.product.id] -= units;
       shelf.addStock(units);
@@ -243,7 +247,7 @@ export class GameScene extends Phaser.Scene {
 
     this.manager.busy = true;
     customer.startPaying();
-    this.showProgress(this.checkout.x, this.checkout.y - 64, BALANCE.payTimeMs, () => {
+    this.showProgress(this.checkout.x, this.checkout.y - 64, this.upgrades.payTimeMs, () => {
       const total = this.economy.sell(customer.basket);
       this.floatText(this.checkout.x, this.checkout.y - 64, `+${total} kr`, '#aed581');
       customer.finishPayment();

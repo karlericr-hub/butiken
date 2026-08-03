@@ -30,6 +30,12 @@ export const BALANCE = {
   /** Kunder som är kvar så här länge efter stängning skickas hem. */
   closingGraceMs: 40_000,
 
+  /** Effekter av uppgraderingar. */
+  cardPayTimeMultiplier: 0.55,
+  shelfCapacityMultiplier: 1.5,
+  betterShelfRestockMultiplier: 0.6,
+  adSpawnBoost: 1.6,
+
   rentPerDay: 80,
   emergencyLoanAmount: 300,
   /** Antal kvällar i rad med negativt saldo innan konkurs. */

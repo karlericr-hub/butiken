@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Customer } from '../entities/Customer';
 import type { Shelf } from '../entities/Shelf';
 import type { Checkout } from '../entities/Checkout';
-import type { GameState } from '../state/GameState';
+import { isProductUnlocked, type GameState } from '../state/GameState';
 import type { EconomySystem } from './EconomySystem';
 import { BALANCE } from '../config/balance';
 
@@ -29,9 +29,9 @@ export class CustomerSystem {
   }
 
   private scheduleNext(): void {
-    const delay =
-      Phaser.Math.Between(BALANCE.spawnIntervalMinMs, BALANCE.spawnIntervalMaxMs) /
-      this.state.difficulty.spawnRate;
+    const rate =
+      this.state.difficulty.spawnRate * (this.state.adActiveToday ? BALANCE.adSpawnBoost : 1);
+    const delay = Phaser.Math.Between(BALANCE.spawnIntervalMinMs, BALANCE.spawnIntervalMaxMs) / rate;
     this.spawnTimer = this.scene.time.delayedCall(delay, () => {
       this.spawn();
       this.scheduleNext();
@@ -39,7 +39,9 @@ export class CustomerSystem {
   }
 
   private spawn(): void {
-    const productIds = this.state.products.map((p) => p.id);
+    const productIds = this.state.products
+      .filter((p) => isProductUnlocked(this.state, p))
+      .map((p) => p.id);
     const count = Phaser.Math.Between(BALANCE.shoppingListMin, BALANCE.shoppingListMax);
     const list: string[] = [];
     for (let i = 0; i < count; i++) {
