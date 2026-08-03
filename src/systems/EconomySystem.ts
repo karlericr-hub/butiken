@@ -15,6 +15,16 @@ export class EconomySystem {
     return total;
   }
 
+  /** Avgift för en hanterad pakethämtning/-inlämning. */
+  parcelIncome(): number {
+    const fee = BALANCE.parcelFee;
+    this.state.money += fee;
+    this.state.stats.revenueToday += fee;
+    this.state.stats.servedToday++;
+    this.state.rating = Math.min(100, this.state.rating + BALANCE.ratingGainPerSale);
+    return fee;
+  }
+
   registerLostCustomer(): void {
     this.state.stats.lostToday++;
     this.state.rating = Math.max(0, this.state.rating - BALANCE.ratingLossPerLostCustomer);

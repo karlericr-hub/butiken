@@ -35,6 +35,20 @@ export const BALANCE = {
   shelfCapacityMultiplier: 1.5,
   betterShelfRestockMultiplier: 0.6,
   adSpawnBoost: 1.6,
+  biggerShopSpawnMultiplier: 1.35,
+  biggerShopQueueBonus: 2,
+
+  /** Personal. */
+  cashierWage: 60,
+  restockerWage: 50,
+  staffRestockCheckMs: 1500,
+
+  /** Paketombud. */
+  parcelFee: 18,
+  parcelSpawnMinMs: 22_000,
+  parcelSpawnMaxMs: 38_000,
+  parcelHandleTimeMs: 1300,
+  parcelQueueMax: 4,
 
   rentPerDay: 80,
   emergencyLoanAmount: 300,

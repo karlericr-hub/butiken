@@ -36,6 +36,19 @@ export class UpgradeSystem {
         p.shelfCapacity = Math.ceil(p.shelfCapacity * BALANCE.shelfCapacityMultiplier);
       }
     }
+    if (def.id === 'anstalld_kassor') {
+      this.state.staff.push({ id: 'kassor', role: 'kassor', dailyWage: BALANCE.cashierWage });
+    }
+    if (def.id === 'anstalld_pafyllare') {
+      this.state.staff.push({
+        id: 'pafyllare',
+        role: 'pafyllare',
+        dailyWage: BALANCE.restockerWage,
+      });
+    }
+    if (def.id === 'paketombud') {
+      this.state.isParcelAgent = true;
+    }
     return true;
   }
 
@@ -49,6 +62,16 @@ export class UpgradeSystem {
     return (
       BALANCE.restockTimeMs * (this.has('battre_hyllor') ? BALANCE.betterShelfRestockMultiplier : 1)
     );
+  }
+
+  /** Kundtakt-multiplikator (större butik lockar fler kunder). */
+  get spawnMultiplier(): number {
+    return this.has('storre_butik') ? BALANCE.biggerShopSpawnMultiplier : 1;
+  }
+
+  /** Max kölängd vid kassan (större butik rymmer fler). */
+  get maxQueueLength(): number {
+    return BALANCE.maxQueueLength + (this.has('storre_butik') ? BALANCE.biggerShopQueueBonus : 0);
   }
 
   static get all(): UpgradeDef[] {

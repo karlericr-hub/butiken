@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
     this.makeCube();
     this.makePerson();
     this.makeTill();
+    this.makeParcel();
     this.scene.start('Game');
   }
 
@@ -72,6 +73,16 @@ export class BootScene extends Phaser.Scene {
     g.fillCircle(12, 7, 6);
     g.fillRoundedRect(4, 15, 16, 21, 6);
     g.generateTexture('person', 24, 38);
+    g.destroy();
+  }
+
+  private makeParcel(): void {
+    const g = this.add.graphics();
+    g.fillStyle(0xa1785c, 1);
+    g.fillRoundedRect(0, 2, 18, 14, 2);
+    g.fillStyle(0xd7ccc8, 1);
+    g.fillRect(8, 2, 3, 14);
+    g.generateTexture('parcel', 18, 16);
     g.destroy();
   }
 

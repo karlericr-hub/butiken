@@ -1,9 +1,9 @@
 import { QueueStation } from './QueueStation';
 
-/** Kassan där kunderna betalar för sina varor. */
-export class Checkout extends QueueStation {
+/** Paketdisken där paketkunder hämtar och lämnar paket. */
+export class ParcelDesk extends QueueStation {
   constructor(scene: Phaser.Scene, gridX: number, gridY: number, maxLength: number) {
     super(scene, gridX, gridY, maxLength);
-    this.buildVisuals(0x8d6e63, 'Kassa', 'till');
+    this.buildVisuals(0x78909c, 'Paket', 'parcel');
   }
 }

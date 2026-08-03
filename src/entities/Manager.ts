@@ -1,7 +1,7 @@
 import { Actor } from './Actor';
 import { BALANCE } from '../config/balance';
 
-export type StationId = 'checkout' | null;
+export type StationId = 'checkout' | 'parcel' | null;
 
 /** Butiksföreståndaren – spelarens avatar. Kan bara göra en sak i taget. */
 export class Manager extends Actor {

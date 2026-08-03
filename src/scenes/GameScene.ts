@@ -6,8 +6,10 @@ import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
 import { Manager } from '../entities/Manager';
 import { Shelf } from '../entities/Shelf';
 import { Checkout } from '../entities/Checkout';
+import { ParcelDesk } from '../entities/ParcelDesk';
 import { Delivery } from '../entities/Delivery';
 import { CustomerSystem } from '../systems/CustomerSystem';
+import { StaffSystem } from '../systems/StaffSystem';
 import { EconomySystem } from '../systems/EconomySystem';
 import { TimeSystem } from '../systems/TimeSystem';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
@@ -25,13 +27,17 @@ export class GameScene extends Phaser.Scene {
   private shelves = new Map<string, Shelf>();
   private checkout!: Checkout;
   private customerSystem!: CustomerSystem;
+  private staffSystem!: StaffSystem;
   private economy!: EconomySystem;
   private timeSystem!: TimeSystem;
   private upgrades!: UpgradeSystem;
   private hud!: HUD;
   private delivery?: Delivery;
+  private parcelDesk?: ParcelDesk;
   private closingHandled = false;
   private customersSentHome = false;
+  private paymentBusy = false;
+  private parcelBusy = false;
 
   constructor() {
     super('Game');
@@ -40,8 +46,11 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.shelves.clear();
     this.delivery = undefined;
+    this.parcelDesk = undefined;
     this.closingHandled = false;
     this.customersSentHome = false;
+    this.paymentBusy = false;
+    this.parcelBusy = false;
 
     let state = this.registry.get('gameState') as GameState | undefined;
     if (!state) {
@@ -63,19 +72,35 @@ export class GameScene extends Phaser.Scene {
       this.shelves.set(product.id, shelf);
     }
 
-    this.checkout = new Checkout(this, 7, 6);
+    this.checkout = new Checkout(this, 7, 6, this.upgrades.maxQueueLength);
     this.checkout.on('pointerdown', () => this.onCheckoutClicked());
+
+    if (this.state.isParcelAgent) {
+      this.parcelDesk = new ParcelDesk(this, 8, 3, BALANCE.parcelQueueMax);
+      this.parcelDesk.on('pointerdown', () => this.onParcelDeskClicked());
+    }
 
     const managerStart = isoToScreen(4, 5);
     this.manager = new Manager(this, managerStart.x, managerStart.y);
+
+    this.staffSystem = new StaffSystem(
+      this,
+      this.state,
+      this.shelves,
+      this.checkout,
+      this.upgrades,
+    );
+    this.staffSystem.spawn();
 
     const doorPoint = isoToScreen(-1.5, 8.5);
     this.customerSystem = new CustomerSystem(
       this,
       this.shelves,
       this.checkout,
+      this.parcelDesk,
       this.state,
       this.economy,
+      this.upgrades,
       doorPoint,
     );
     this.customerSystem.start();
@@ -98,10 +123,12 @@ export class GameScene extends Phaser.Scene {
     );
   }
 
-  update(_time: number, delta: number): void {
+  update(time: number, delta: number): void {
     this.timeSystem.tick(delta);
     this.handleClosing();
     this.tryStartPayment();
+    this.tryStartParcelService();
+    this.staffSystem.update(time);
     this.hud.update(this.timeSystem.isClosed ? 'STÄNGT' : this.timeSystem.clockText);
   }
 
@@ -216,6 +243,14 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private onParcelDeskClicked(): void {
+    if (!this.parcelDesk) return;
+    const spot = this.parcelDesk.managerSpot;
+    this.manager.walkTo(spot.x, spot.y, () => {
+      this.manager.station = 'parcel';
+    });
+  }
+
   private onShelfClicked(shelf: Shelf): void {
     if (this.manager.busy) return;
     const spot = shelf.standPoint;
@@ -241,23 +276,53 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tryStartPayment(): void {
-    if (this.manager.station !== 'checkout' || this.manager.busy) return;
+    if (this.paymentBusy) return;
     const customer = this.checkout.queue[0];
     if (!customer || !customer.readyToPay) return;
 
-    this.manager.busy = true;
+    // Anställd kassör sköter kassan automatiskt, annars krävs föreståndaren.
+    const cashier = this.staffSystem.cashier;
+    const managerReady = this.manager.station === 'checkout' && !this.manager.busy;
+    if (!cashier && !managerReady) return;
+
+    this.paymentBusy = true;
+    if (cashier) cashier.working = true;
+    else this.manager.busy = true;
+
     customer.startPaying();
     this.showProgress(this.checkout.x, this.checkout.y - 64, this.upgrades.payTimeMs, () => {
       const total = this.economy.sell(customer.basket);
       this.floatText(this.checkout.x, this.checkout.y - 64, `+${total} kr`, '#aed581');
       customer.finishPayment();
       this.checkout.dequeue();
+      this.paymentBusy = false;
+      if (cashier) cashier.working = false;
+      else this.manager.busy = false;
+    });
+  }
+
+  private tryStartParcelService(): void {
+    const desk = this.parcelDesk;
+    if (!desk || this.parcelBusy) return;
+    const customer = desk.queue[0];
+    if (!customer || !customer.readyToPay) return;
+    if (this.manager.station !== 'parcel' || this.manager.busy) return;
+
+    this.parcelBusy = true;
+    this.manager.busy = true;
+    customer.startPaying();
+    this.showProgress(desk.x, desk.y - 64, BALANCE.parcelHandleTimeMs, () => {
+      const fee = this.economy.parcelIncome();
+      this.floatText(desk.x, desk.y - 64, `+${fee} kr`, '#aed581');
+      customer.finishPayment();
+      desk.dequeue();
+      this.parcelBusy = false;
       this.manager.busy = false;
     });
   }
 
   /** Liten grön förloppsindikator för en pågående handling. */
-  private showProgress(x: number, y: number, durationMs: number, onDone: () => void): void {
+  showProgress(x: number, y: number, durationMs: number, onDone: () => void): void {
     const g = this.add.graphics();
     g.setDepth(9000);
     const progress = { p: 0 };
@@ -279,7 +344,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private floatText(x: number, y: number, text: string, color: string): void {
+  floatText(x: number, y: number, text: string, color: string): void {
     const t = this.add
       .text(x, y, text, {
         fontFamily: 'sans-serif',
