@@ -15,20 +15,6 @@ export class EconomySystem {
     return total;
   }
 
-  /**
-   * Köper in varor för påfyllning. Returnerar hur många enheter som
-   * faktiskt kunde köpas (begränsas av kassan).
-   */
-  buyStock(product: Product, wantedUnits: number): number {
-    const affordable = Math.floor(this.state.money / product.buyPrice);
-    const units = Math.min(wantedUnits, affordable);
-    if (units <= 0) return 0;
-    const cost = units * product.buyPrice;
-    this.state.money -= cost;
-    this.state.stats.costsToday += cost;
-    return units;
-  }
-
   registerLostCustomer(): void {
     this.state.stats.lostToday++;
     this.state.rating = Math.max(0, this.state.rating - BALANCE.ratingLossPerLostCustomer);
