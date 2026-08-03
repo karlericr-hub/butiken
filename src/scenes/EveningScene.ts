@@ -60,6 +60,19 @@ export class EveningScene extends Phaser.Scene {
     const W = this.scale.width;
     this.add.rectangle(0, 0, W, this.scale.height, 0x1e1e2e).setOrigin(0, 0);
 
+    // Kortpaneler bakom de tre kolumnerna
+    const cards = this.add.graphics();
+    for (const [cx, cw] of [
+      [COL_SUMMARY_X - 14, 312],
+      [COL_ORDER_X - 14, 332],
+      [COL_UPGRADES_X - 14, 316],
+    ] as [number, number][]) {
+      cards.fillStyle(0x242938, 1);
+      cards.fillRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
+      cards.lineStyle(1, 0x3a4158, 1);
+      cards.strokeRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
+    }
+
     this.add
       .text(W / 2, 24, `🌙 Dag ${this.state.day} är slut!`, {
         fontFamily: 'sans-serif',

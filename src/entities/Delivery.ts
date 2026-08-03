@@ -19,6 +19,8 @@ export class Delivery extends Phaser.GameObjects.Container {
     this.gridY = gridY;
     this.contents = { ...contents };
 
+    const pallet = scene.add.sprite(0, 14, 'pallet').setOrigin(0.5, 1);
+    this.add(pallet);
     const box1 = scene.add.sprite(0, 0, 'cube').setOrigin(0.5, 40 / 56).setScale(0.8);
     box1.setTint(0xc8a06a);
     this.add(box1);

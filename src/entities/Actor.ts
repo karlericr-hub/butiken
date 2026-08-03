@@ -16,7 +16,7 @@ export class Actor extends Phaser.GameObjects.Sprite {
     private speed: number,
   ) {
     super(scene, x, y, texture);
-    this.setOrigin(0.5, 0.9);
+    this.setOrigin(0.5, 0.95);
     this.shadow = scene.add.sprite(x, y, 'shadow').setAlpha(0.22);
     scene.add.existing(this);
   }

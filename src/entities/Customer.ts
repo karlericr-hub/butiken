@@ -7,7 +7,7 @@ import type { QueueStation } from './QueueStation';
 
 export type CustomerState = 'shopping' | 'picking' | 'toQueue' | 'queuing' | 'paying' | 'leaving';
 
-const CUSTOMER_TINTS = [0xef9a9a, 0x90caf9, 0xffe082, 0xce93d8, 0xa5d6a7, 0xffab91];
+const CUSTOMER_VARIANTS = 8;
 
 export interface CustomerCallbacks {
   /** Kunden lämnade utan att handla (tomma hyllor eller full kö). */
@@ -32,7 +32,8 @@ export class Customer extends Actor {
   private queueIndex = 0;
   private patienceTotalMs: number;
   private patienceLeftMs: number;
-  private moodBubble?: Phaser.GameObjects.Text;
+  private moodBubble?: Phaser.GameObjects.Container;
+  private moodText?: Phaser.GameObjects.Text;
 
   constructor(
     scene: Phaser.Scene,
@@ -47,13 +48,16 @@ export class Customer extends Actor {
     /** 'paket'-kunder går direkt till sin station utan att handla. */
     readonly kind: 'shopper' | 'paket' = 'shopper',
   ) {
-    super(scene, x, y, 'person', BALANCE.customerSpeed);
+    super(
+      scene,
+      x,
+      y,
+      kind === 'paket' ? 'parcelcust' : `cust${Phaser.Math.Between(0, CUSTOMER_VARIANTS - 1)}`,
+      BALANCE.customerSpeed,
+    );
     this.shoppingList = [...shoppingList];
     this.patienceTotalMs = patienceMs;
     this.patienceLeftMs = patienceMs;
-    this.setTint(
-      kind === 'paket' ? 0x8d6e63 : Phaser.Utils.Array.GetRandom(CUSTOMER_TINTS),
-    );
     this.startNextTask();
   }
 
@@ -160,14 +164,18 @@ export class Customer extends Actor {
   }
 
   private showMoodBubble(): void {
-    this.moodBubble = this.scene.add
-      .text(this.x, this.y - 44, MOOD_EMOJI[this.mood], { fontSize: '18px' })
-      .setOrigin(0.5, 1);
+    this.moodBubble = this.scene.add.container(this.x, this.y - 44);
+    const bubble = this.scene.add.sprite(0, 0, 'bubble').setOrigin(0.5, 1);
+    this.moodText = this.scene.add
+      .text(0, -15, MOOD_EMOJI[this.mood], { fontSize: '13px' })
+      .setOrigin(0.5);
+    this.moodBubble.add([bubble, this.moodText]);
   }
 
   private hideMoodBubble(): void {
     this.moodBubble?.destroy();
     this.moodBubble = undefined;
+    this.moodText = undefined;
   }
 
   private get inQueue(): boolean {
@@ -185,8 +193,8 @@ export class Customer extends Actor {
       const ratio = this.patienceLeftMs / this.patienceTotalMs;
       this.mood = ratio > 0.5 ? 'happy' : ratio > 0.2 ? 'impatient' : 'angry';
     }
-    if (this.moodBubble) {
-      this.moodBubble.setText(MOOD_EMOJI[this.mood]);
+    if (this.moodBubble && this.moodText) {
+      this.moodText.setText(MOOD_EMOJI[this.mood]);
       this.moodBubble.setPosition(this.x, this.y - 44);
       this.moodBubble.setDepth(this.depth + 1);
     }

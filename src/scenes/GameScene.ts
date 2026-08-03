@@ -67,6 +67,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawFloor();
     this.drawWalls();
+    this.placeProps();
 
     for (const product of this.state.products) {
       const pos = SHELF_POSITIONS[product.id];
@@ -260,7 +261,11 @@ export class GameScene extends Phaser.Scene {
         const pos = isoToScreen(gx, gy);
         const tile = this.add.sprite(pos.x, pos.y + 16, 'tile');
         tile.setOrigin(0.5, 0.5);
-        tile.setTint((gx + gy) % 2 === 0 ? 0xf0e7d3 : 0xe5dbc2);
+        const base = (gx + gy) % 2 === 0 ? 0xf0e7d3 : 0xe5dbc2;
+        // Liten slumpvariation gör golvet levande utan att bli plottrigt.
+        tile.setTint(
+          Phaser.Display.Color.ValueToColor(base).darken(Phaser.Math.Between(0, 3)).color,
+        );
         tile.setDepth(-1000);
       }
     }
@@ -317,6 +322,62 @@ export class GameScene extends Phaser.Scene {
     g.lineTo(nw.x, nw.y - H);
     g.lineTo(ne.x, ne.y - H);
     g.strokePath();
+
+    // Fönster på nordöstra väggen (punkter längs väggens överkantslinje)
+    const winA = isoToScreen(4.4, 0);
+    const winB = isoToScreen(6.6, 0);
+    g.fillStyle(0xbfe3ef, 1);
+    g.beginPath();
+    g.moveTo(winA.x, winA.y - 36);
+    g.lineTo(winB.x, winB.y - 36);
+    g.lineTo(winB.x, winB.y - 10);
+    g.lineTo(winA.x, winA.y - 10);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(2.5, 0x8d7558, 1);
+    g.strokePath();
+    const winMid = isoToScreen(5.5, 0);
+    g.lineStyle(1.5, 0x8d7558, 1);
+    g.beginPath();
+    g.moveTo(winMid.x, winMid.y - 36);
+    g.lineTo(winMid.x, winMid.y - 10);
+    g.moveTo(winA.x, winA.y - 23);
+    g.lineTo(winB.x, winB.y - 23);
+    g.strokePath();
+
+    // Dörrpost vid väggöppningens kant
+    g.fillStyle(0x8d7558, 1);
+    const post = isoToScreen(0, 8);
+    g.fillRect(post.x - 34, post.y + 16 - H - 3, 5, H + 6);
+  }
+
+  /** Dekor: krukväxter och en entréskylt. */
+  private placeProps(): void {
+    const spots: [number, number][] = [
+      [9.3, 0.6],
+      [0.55, 6.6],
+      [9.4, 8.6],
+    ];
+    for (const [gx, gy] of spots) {
+      const p = isoToScreen(gx, gy);
+      const plant = this.add.sprite(p.x, p.y, 'plant').setOrigin(0.5, 1);
+      plant.setDepth(p.y);
+      const shadow = this.add.sprite(p.x, p.y + 1, 'shadow').setAlpha(0.2);
+      shadow.setDepth(p.y - 1);
+    }
+
+    const door = isoToScreen(0, 9);
+    this.add
+      .text(door.x - 34, door.y - 58, '🛒 Entré', {
+        fontFamily: 'sans-serif',
+        fontSize: '12px',
+        color: '#fff8e1',
+        backgroundColor: '#6d4c41',
+        padding: { x: 6, y: 3 },
+      })
+      .setOrigin(0.5)
+      .setDepth(-940)
+      .setAngle(-2);
   }
 
   /** Myntregn vid en lyckad försäljning. */

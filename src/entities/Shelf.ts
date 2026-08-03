@@ -29,9 +29,8 @@ export class Shelf extends Phaser.GameObjects.Container {
     this.gridX = gridX;
     this.gridY = gridY;
 
-    const cube = scene.add.sprite(0, 0, 'cube');
-    cube.setOrigin(0.5, 40 / 56);
-    cube.setTint(0xd7ccc8);
+    const cube = scene.add.sprite(0, 0, 'shelfCube');
+    cube.setOrigin(0.5, 40 / 60);
     this.add(cube);
 
     for (const [mx, my] of MINI_POSITIONS) {
