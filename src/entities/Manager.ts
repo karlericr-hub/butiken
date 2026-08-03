@@ -11,8 +11,7 @@ export class Manager extends Actor {
   busy = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'person', BALANCE.managerSpeed);
-    this.setTint(0x4caf50);
+    super(scene, x, y, 'mgr', BALANCE.managerSpeed);
   }
 
   /** Gå till en punkt. Avbryter pågående stationering (men inte pågående handling). */

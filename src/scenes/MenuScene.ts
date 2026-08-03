@@ -13,12 +13,23 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.rectangle(0, 0, W, H, 0x1e1e2e).setOrigin(0, 0);
 
+    const cart = this.add.text(W / 2 - 165, H / 2 - 170, '🛒', { fontSize: '52px' }).setOrigin(0.5);
+    this.tweens.add({
+      targets: cart,
+      y: cart.y - 10,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
     this.add
-      .text(W / 2, H / 2 - 170, '🛒 Butiken', {
+      .text(W / 2 + 28, H / 2 - 170, 'Butiken', {
         fontFamily: 'sans-serif',
         fontSize: '56px',
         color: '#ffd54f',
         fontStyle: 'bold',
+        shadow: { offsetX: 0, offsetY: 4, color: '#00000066', blur: 8, fill: true },
       })
       .setOrigin(0.5);
 
