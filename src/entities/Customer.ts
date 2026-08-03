@@ -3,7 +3,7 @@ import { Actor } from './Actor';
 import { BALANCE } from '../config/balance';
 import type { Product } from '../state/GameState';
 import type { Shelf } from './Shelf';
-import type { Checkout } from './Checkout';
+import type { QueueStation } from './QueueStation';
 
 export type CustomerState = 'shopping' | 'picking' | 'toQueue' | 'queuing' | 'paying' | 'leaving';
 
@@ -41,15 +41,19 @@ export class Customer extends Actor {
     shoppingList: string[],
     patienceMs: number,
     private shelves: Map<string, Shelf>,
-    private checkout: Checkout,
+    private station: QueueStation,
     private doorPoint: { x: number; y: number },
     private callbacks: CustomerCallbacks,
+    /** 'paket'-kunder går direkt till sin station utan att handla. */
+    readonly kind: 'shopper' | 'paket' = 'shopper',
   ) {
     super(scene, x, y, 'person', BALANCE.customerSpeed);
     this.shoppingList = [...shoppingList];
     this.patienceTotalMs = patienceMs;
     this.patienceLeftMs = patienceMs;
-    this.setTint(Phaser.Utils.Array.GetRandom(CUSTOMER_TINTS));
+    this.setTint(
+      kind === 'paket' ? 0x8d6e63 : Phaser.Utils.Array.GetRandom(CUSTOMER_TINTS),
+    );
     this.startNextTask();
   }
 
@@ -88,21 +92,21 @@ export class Customer extends Actor {
   }
 
   private headForCheckout(): void {
-    if (this.basket.length === 0) {
+    if (this.kind === 'shopper' && this.basket.length === 0) {
       // Hittade inget att köpa – går hem missnöjd.
       this.callbacks.onLost(this);
       this.leave();
       return;
     }
-    if (this.checkout.queue.length >= BALANCE.maxQueueLength) {
+    if (this.station.queue.length >= this.station.maxLength) {
       this.callbacks.onLost(this);
       this.leave();
       return;
     }
     this.state = 'toQueue';
-    this.queueIndex = this.checkout.join(this);
+    this.queueIndex = this.station.join(this);
     this.showMoodBubble();
-    const spot = this.checkout.queueSpot(this.queueIndex);
+    const spot = this.station.queueSpot(this.queueIndex);
     this.moveTo(spot.x, spot.y, () => {
       this.state = 'queuing';
     });
@@ -144,13 +148,13 @@ export class Customer extends Actor {
   /** Butiken stänger – gå hem (räknas inte som förlorad kund). */
   forceLeave(): void {
     if (this.state === 'paying' || this.state === 'leaving') return;
-    if (this.inQueue) this.checkout.removeFromQueue(this);
+    if (this.inQueue) this.station.removeFromQueue(this);
     this.leave();
   }
 
   /** Tröttnade på att köa – lämnar utan att handla. */
   private abandonQueue(): void {
-    this.checkout.removeFromQueue(this);
+    this.station.removeFromQueue(this);
     this.callbacks.onLost(this);
     this.leave();
   }
