@@ -14,4 +14,10 @@ export const BALANCE = {
   restockTimeMs: 900,
 
   maxQueueLength: 5,
+
+  patienceMinS: 16,
+  patienceMaxS: 26,
+
+  ratingGainPerSale: 0.5,
+  ratingLossPerLostCustomer: 2,
 };

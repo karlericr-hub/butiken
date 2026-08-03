@@ -1,4 +1,5 @@
 import type { GameState, Product } from '../state/GameState';
+import { BALANCE } from '../config/balance';
 
 /** Hanterar alla pengaflöden och dagsstatistik. */
 export class EconomySystem {
@@ -10,6 +11,7 @@ export class EconomySystem {
     this.state.money += total;
     this.state.stats.revenueToday += total;
     this.state.stats.servedToday++;
+    this.state.rating = Math.min(100, this.state.rating + BALANCE.ratingGainPerSale);
     return total;
   }
 
@@ -29,5 +31,6 @@ export class EconomySystem {
 
   registerLostCustomer(): void {
     this.state.stats.lostToday++;
+    this.state.rating = Math.max(0, this.state.rating - BALANCE.ratingLossPerLostCustomer);
   }
 }

@@ -46,11 +46,16 @@ export class CustomerSystem {
       list.push(Phaser.Utils.Array.GetRandom(productIds));
     }
 
+    const patienceMs =
+      Phaser.Math.Between(BALANCE.patienceMinS * 1000, BALANCE.patienceMaxS * 1000) *
+      this.state.difficulty.patienceModifier;
+
     const customer = new Customer(
       this.scene,
       this.doorPoint.x,
       this.doorPoint.y,
       list,
+      patienceMs,
       this.shelves,
       this.checkout,
       this.doorPoint,

@@ -63,7 +63,7 @@ export class HUD {
 
   update(): void {
     this.moneyText.setText(`${this.state.money} kr`);
-    this.dayText.setText(`Dag ${this.state.day}`);
+    this.dayText.setText(`Dag ${this.state.day}  •  ⭐ ${Math.round(this.state.rating)}`);
     const s = this.state.stats;
     this.statsText.setText(
       `Kö: ${this.checkout.queue.length}   Betjänade: ${s.servedToday}   Förlorade: ${s.lostToday}`,

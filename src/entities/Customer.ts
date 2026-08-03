@@ -16,17 +16,30 @@ export interface CustomerCallbacks {
   onGone: (customer: Customer) => void;
 }
 
+export type Mood = 'happy' | 'impatient' | 'angry';
+
+const MOOD_EMOJI: Record<Mood, string> = {
+  happy: '🙂',
+  impatient: '😕',
+  angry: '😠',
+};
+
 export class Customer extends Actor {
   state: CustomerState = 'shopping';
   readonly basket: Product[] = [];
+  mood: Mood = 'happy';
   private shoppingList: string[];
   private queueIndex = 0;
+  private patienceTotalMs: number;
+  private patienceLeftMs: number;
+  private moodBubble?: Phaser.GameObjects.Text;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     shoppingList: string[],
+    patienceMs: number,
     private shelves: Map<string, Shelf>,
     private checkout: Checkout,
     private doorPoint: { x: number; y: number },
@@ -34,6 +47,8 @@ export class Customer extends Actor {
   ) {
     super(scene, x, y, 'person', BALANCE.customerSpeed);
     this.shoppingList = [...shoppingList];
+    this.patienceTotalMs = patienceMs;
+    this.patienceLeftMs = patienceMs;
     this.setTint(Phaser.Utils.Array.GetRandom(CUSTOMER_TINTS));
     this.startNextTask();
   }
@@ -86,6 +101,7 @@ export class Customer extends Actor {
     }
     this.state = 'toQueue';
     this.queueIndex = this.checkout.join(this);
+    this.showMoodBubble();
     const spot = this.checkout.queueSpot(this.queueIndex);
     this.moveTo(spot.x, spot.y, () => {
       this.state = 'queuing';
@@ -109,6 +125,7 @@ export class Customer extends Actor {
 
   startPaying(): void {
     this.state = 'paying';
+    this.hideMoodBubble();
   }
 
   finishPayment(): void {
@@ -117,9 +134,55 @@ export class Customer extends Actor {
 
   private leave(): void {
     this.state = 'leaving';
+    this.hideMoodBubble();
     this.moveTo(this.doorPoint.x, this.doorPoint.y, () => {
       this.callbacks.onGone(this);
       this.destroy();
     });
+  }
+
+  /** Tröttnade på att köa – lämnar utan att handla. */
+  private abandonQueue(): void {
+    this.checkout.removeFromQueue(this);
+    this.callbacks.onLost(this);
+    this.leave();
+  }
+
+  private showMoodBubble(): void {
+    this.moodBubble = this.scene.add
+      .text(this.x, this.y - 44, MOOD_EMOJI[this.mood], { fontSize: '18px' })
+      .setOrigin(0.5, 1);
+  }
+
+  private hideMoodBubble(): void {
+    this.moodBubble?.destroy();
+    this.moodBubble = undefined;
+  }
+
+  private get inQueue(): boolean {
+    return this.state === 'toQueue' || this.state === 'queuing';
+  }
+
+  preUpdate(time: number, delta: number): void {
+    super.preUpdate(time, delta);
+    if (this.inQueue) {
+      this.patienceLeftMs -= delta;
+      if (this.patienceLeftMs <= 0) {
+        this.abandonQueue();
+        return;
+      }
+      const ratio = this.patienceLeftMs / this.patienceTotalMs;
+      this.mood = ratio > 0.5 ? 'happy' : ratio > 0.2 ? 'impatient' : 'angry';
+    }
+    if (this.moodBubble) {
+      this.moodBubble.setText(MOOD_EMOJI[this.mood]);
+      this.moodBubble.setPosition(this.x, this.y - 44);
+      this.moodBubble.setDepth(this.depth + 1);
+    }
+  }
+
+  destroy(fromScene?: boolean): void {
+    this.hideMoodBubble();
+    super.destroy(fromScene);
   }
 }
