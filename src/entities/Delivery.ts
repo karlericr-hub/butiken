@@ -30,7 +30,7 @@ export class Delivery extends Phaser.GameObjects.Container {
 
     const label = scene.add
       .text(0, -50, '📦 Leverans!', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '13px',
         color: '#fff3e0',
         fontStyle: 'bold',

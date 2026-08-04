@@ -23,7 +23,7 @@ export class GameOverScene extends Phaser.Scene {
 
     this.add
       .text(W / 2, H / 2 - 120, '💸 Konkurs!', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '44px',
         color: '#e64a19',
         fontStyle: 'bold',
@@ -36,7 +36,7 @@ export class GameOverScene extends Phaser.Scene {
         H / 2 - 40,
         `Butiken klarade sig i ${state.day} dagar.\nButiksbetyg: ⭐ ${Math.round(state.rating)}`,
         {
-          fontFamily: 'sans-serif',
+          fontFamily: '"Baloo 2", sans-serif',
           fontSize: '20px',
           color: '#4e342e',
           align: 'center',
@@ -52,7 +52,7 @@ export class GameOverScene extends Phaser.Scene {
     btn.on('pointerout', () => btn.setFillStyle(0x43a047));
     this.add
       .text(W / 2, H / 2 + 70, 'Spela igen', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '20px',
         color: '#ffffff',
         fontStyle: 'bold',

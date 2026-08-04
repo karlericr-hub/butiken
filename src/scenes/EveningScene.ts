@@ -75,7 +75,7 @@ export class EveningScene extends Phaser.Scene {
 
     this.add
       .text(W / 2, 24, `🌙 Dag ${this.state.day} är slut!`, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '28px',
         color: '#ef6c00',
         fontStyle: 'bold',
@@ -98,7 +98,7 @@ export class EveningScene extends Phaser.Scene {
     const purchases = s.costsToday - BALANCE.rentPerDay - this.wagesToday;
 
     this.add.text(x, y, 'Dagens resultat', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '18px',
       color: '#4e342e',
       fontStyle: 'bold',
@@ -124,13 +124,13 @@ export class EveningScene extends Phaser.Scene {
       const ry = y + 34 + i * 26;
       if (!label) return;
       this.add.text(x, ry, label, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '14px',
         color: '#4e342e',
       });
       this.add
         .text(x + 268, ry, value, {
-          fontFamily: 'sans-serif',
+          fontFamily: '"Baloo 2", sans-serif',
           fontSize: '14px',
           color,
           fontStyle: 'bold',
@@ -140,14 +140,14 @@ export class EveningScene extends Phaser.Scene {
 
     const kassaY = y + 34 + rows.length * 26 + 6;
     this.add.text(x, kassaY, 'Kassa', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '15px',
       color: '#4e342e',
       fontStyle: 'bold',
     });
     this.kassaText = this.add
       .text(x + 268, kassaY, '', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '15px',
         fontStyle: 'bold',
       })
@@ -173,7 +173,7 @@ export class EveningScene extends Phaser.Scene {
 
     c.add(
       this.add.text(x, y, 'Beställ varor', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '18px',
         color: '#4e342e',
         fontStyle: 'bold',
@@ -181,7 +181,7 @@ export class EveningScene extends Phaser.Scene {
     );
     c.add(
       this.add.text(x, y + 26, 'Leverans imorgon förmiddag', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '12px',
         color: '#8d6e63',
       }),
@@ -194,7 +194,7 @@ export class EveningScene extends Phaser.Scene {
 
       c.add(
         this.add.text(x, ry, `${p.name}  (${p.buyPrice} kr/st)`, {
-          fontFamily: 'sans-serif',
+          fontFamily: '"Baloo 2", sans-serif',
           fontSize: '15px',
           color: '#4e342e',
           fontStyle: 'bold',
@@ -206,7 +206,7 @@ export class EveningScene extends Phaser.Scene {
           ry + 22,
           `Hylla: ${p.currentStock}/${p.shelfCapacity}   Lager: ${this.state.storage[p.id] ?? 0}`,
           {
-            fontFamily: 'sans-serif',
+            fontFamily: '"Baloo 2", sans-serif',
             fontSize: '12px',
             color: '#8d6e63',
           },
@@ -216,7 +216,7 @@ export class EveningScene extends Phaser.Scene {
       c.add(this.makeButton(x + 190, ry + 12, 32, 32, '−', () => this.changeOrder(p.id, -1)));
       const qty = this.add
         .text(x + 231, ry + 12, '0', {
-          fontFamily: 'sans-serif',
+          fontFamily: '"Baloo 2", sans-serif',
           fontSize: '18px',
           color: '#4e342e',
           fontStyle: 'bold',
@@ -229,14 +229,14 @@ export class EveningScene extends Phaser.Scene {
 
     const totalY = y + 58 + available.length * 78 + 4;
     this.totalText = this.add.text(x, totalY, '', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '15px',
       color: '#ef6c00',
       fontStyle: 'bold',
     });
     c.add(this.totalText);
     this.moneyAfterText = this.add.text(x, totalY + 24, '', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '13px',
       color: '#8d6e63',
     });
@@ -269,14 +269,14 @@ export class EveningScene extends Phaser.Scene {
 
   private buildUpgradeSection(x: number, y: number): void {
     this.add.text(x, y, 'Uppgraderingar', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '18px',
       color: '#4e342e',
       fontStyle: 'bold',
     });
 
     this.tooltip = this.add.text(x, y + 34 + UPGRADES.length * 36 + 8, '', {
-      fontFamily: 'sans-serif',
+      fontFamily: '"Baloo 2", sans-serif',
       fontSize: '12px',
       color: '#6d4c41',
       wordWrap: { width: 285 },
@@ -295,7 +295,7 @@ export class EveningScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     const name = this.add
       .text(x + 10, y + 16, def.name, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '13px',
         color: '#4e342e',
         fontStyle: 'bold',
@@ -303,7 +303,7 @@ export class EveningScene extends Phaser.Scene {
       .setOrigin(0, 0.5);
     const status = this.add
       .text(x + 277, y + 16, '', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '12px',
         fontStyle: 'bold',
       })
@@ -370,7 +370,7 @@ export class EveningScene extends Phaser.Scene {
         466,
         `⚠️ Kassan är negativ! Kväll ${this.state.debtEvenings} av ${BALANCE.maxDebtEvenings} – sedan går butiken i konkurs.`,
         {
-          fontFamily: 'sans-serif',
+          fontFamily: '"Baloo 2", sans-serif',
           fontSize: '14px',
           color: '#c62828',
           fontStyle: 'bold',
@@ -438,7 +438,7 @@ export class EveningScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     const txt = this.add
       .text(cx, cy, label, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: h > 44 ? '19px' : '16px',
         color: '#ffffff',
         fontStyle: 'bold',

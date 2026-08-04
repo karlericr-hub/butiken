@@ -43,7 +43,7 @@ export class Shelf extends Phaser.GameObjects.Container {
 
     const label = scene.add
       .text(0, -52, product.name, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '12px',
         color: '#4a3f35',
       })

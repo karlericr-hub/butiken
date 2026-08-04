@@ -35,7 +35,7 @@ export abstract class QueueStation extends Phaser.GameObjects.Container {
 
     const text = this.scene.add
       .text(0, -52, label, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '12px',
         color: '#4a3f35',
         fontStyle: 'bold',
