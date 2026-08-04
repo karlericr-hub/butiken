@@ -16,23 +16,32 @@ export interface CustomerCallbacks {
   onGone: (customer: Customer) => void;
 }
 
-export type Mood = 'happy' | 'impatient' | 'angry';
+export type Mood = 'green' | 'yellow' | 'orange' | 'red';
 
-const MOOD_EMOJI: Record<Mood, string> = {
-  happy: '🙂',
-  impatient: '😕',
-  angry: '😠',
-};
+/**
+ * Humörskala à la HappyOrNot – fyra nivåer där näst högsta är gul (inte
+ * ljusgrön). Index 0 = gladast, index 3 = argast. Bubblan tintas med färgen.
+ */
+const MOOD_LEVELS: { emoji: string; tint: number }[] = [
+  { emoji: '😄', tint: 0x2ecc55 }, // mörkgrön – jättenöjd
+  { emoji: '🙂', tint: 0xf2c81e }, // gul – näst högsta
+  { emoji: '😕', tint: 0xef8b3b }, // orange – lite missnöjd
+  { emoji: '😠', tint: 0xe23b3b }, // röd – arg
+];
 
 export class Customer extends Actor {
   state: CustomerState = 'shopping';
   readonly basket: Product[] = [];
-  mood: Mood = 'happy';
+  mood: Mood = 'green';
+  private moodLevel = 0;
+  /** Antal varor kunden inte kunde få tag på (tom eller saknad hylla). */
+  private missingCount = 0;
   private shoppingList: string[];
   private queueIndex = 0;
   private patienceTotalMs: number;
   private patienceLeftMs: number;
   private moodBubble?: Phaser.GameObjects.Container;
+  private moodBubbleSprite?: Phaser.GameObjects.Sprite;
   private moodText?: Phaser.GameObjects.Text;
 
   constructor(
@@ -58,6 +67,7 @@ export class Customer extends Actor {
     this.shoppingList = [...shoppingList];
     this.patienceTotalMs = patienceMs;
     this.patienceLeftMs = patienceMs;
+    this.showMoodBubble();
     this.startNextTask();
   }
 
@@ -76,6 +86,8 @@ export class Customer extends Actor {
     }
     const shelf = this.shelves.get(nextId);
     if (!shelf) {
+      // Ingen hylla för varan – räknas som saknad vara, humöret sjunker ett hack.
+      this.missingCount++;
       this.startNextTask();
       return;
     }
@@ -90,6 +102,9 @@ export class Customer extends Actor {
       if (!this.active) return;
       if (shelf.takeOne()) {
         this.basket.push(shelf.product);
+      } else {
+        // Tom hylla – varan saknas, humöret sjunker ett hack.
+        this.missingCount++;
       }
       this.startNextTask();
     });
@@ -109,7 +124,6 @@ export class Customer extends Actor {
     }
     this.state = 'toQueue';
     this.queueIndex = this.station.join(this);
-    this.showMoodBubble();
     const spot = this.station.queueSpot(this.queueIndex);
     this.moveTo(spot.x, spot.y, () => {
       this.state = 'queuing';
@@ -133,7 +147,6 @@ export class Customer extends Actor {
 
   startPaying(): void {
     this.state = 'paying';
-    this.hideMoodBubble();
   }
 
   finishPayment(): void {
@@ -142,7 +155,6 @@ export class Customer extends Actor {
 
   private leave(): void {
     this.state = 'leaving';
-    this.hideMoodBubble();
     this.moveTo(this.doorPoint.x, this.doorPoint.y, () => {
       this.callbacks.onGone(this);
       this.destroy();
@@ -165,17 +177,35 @@ export class Customer extends Actor {
 
   private showMoodBubble(): void {
     this.moodBubble = this.scene.add.container(this.x, this.y - 44);
-    const bubble = this.scene.add.sprite(0, 0, 'bubble').setOrigin(0.5, 1);
+    this.moodBubbleSprite = this.scene.add
+      .sprite(0, 0, 'bubble')
+      .setOrigin(0.5, 1)
+      .setTint(MOOD_LEVELS[this.moodLevel].tint);
     this.moodText = this.scene.add
-      .text(0, -15, MOOD_EMOJI[this.mood], { fontSize: '13px' })
+      .text(0, -15, MOOD_LEVELS[this.moodLevel].emoji, { fontSize: '13px' })
       .setOrigin(0.5);
-    this.moodBubble.add([bubble, this.moodText]);
+    this.moodBubble.add([this.moodBubbleSprite, this.moodText]);
   }
 
   private hideMoodBubble(): void {
     this.moodBubble?.destroy();
     this.moodBubble = undefined;
+    this.moodBubbleSprite = undefined;
     this.moodText = undefined;
+  }
+
+  /**
+   * Räknar ut humörnivån (0 gladast … 3 argast). Varje saknad vara sänker
+   * humöret ett hack, och otålighet i kön sänker det ytterligare.
+   */
+  private computeMoodLevel(): number {
+    let level = this.missingCount;
+    if (this.inQueue) {
+      const ratio = this.patienceLeftMs / this.patienceTotalMs;
+      if (ratio <= 0.2) level += 2;
+      else if (ratio <= 0.5) level += 1;
+    }
+    return Phaser.Math.Clamp(level, 0, MOOD_LEVELS.length - 1);
   }
 
   private get inQueue(): boolean {
@@ -190,11 +220,12 @@ export class Customer extends Actor {
         this.abandonQueue();
         return;
       }
-      const ratio = this.patienceLeftMs / this.patienceTotalMs;
-      this.mood = ratio > 0.5 ? 'happy' : ratio > 0.2 ? 'impatient' : 'angry';
     }
-    if (this.moodBubble && this.moodText) {
-      this.moodText.setText(MOOD_EMOJI[this.mood]);
+    this.moodLevel = this.computeMoodLevel();
+    this.mood = (['green', 'yellow', 'orange', 'red'] as Mood[])[this.moodLevel];
+    if (this.moodBubble && this.moodText && this.moodBubbleSprite) {
+      this.moodText.setText(MOOD_LEVELS[this.moodLevel].emoji);
+      this.moodBubbleSprite.setTint(MOOD_LEVELS[this.moodLevel].tint);
       this.moodBubble.setPosition(this.x, this.y - 44);
       this.moodBubble.setDepth(this.depth + 1);
     }
