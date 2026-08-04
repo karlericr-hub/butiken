@@ -118,10 +118,14 @@ export class EveningScene extends Phaser.Scene {
       ['Betjänade kunder', `${s.servedToday}`, '#6d4c41'],
       ['Förlorade kunder', `${s.lostToday}`, '#6d4c41'],
       ['Butiksbetyg', `⭐ ${Math.round(this.state.rating)}`, '#ef6c00'],
+      ['Sålda varor idag', '', '#4e342e'],
     );
+    for (const p of this.state.products.filter((prod) => isProductUnlocked(this.state, prod))) {
+      rows.push([`  ${p.name}`, `${s.soldToday[p.id] ?? 0} st`, '#6d4c41']);
+    }
 
     rows.forEach(([label, value, color], i) => {
-      const ry = y + 34 + i * 26;
+      const ry = y + 34 + i * 24;
       if (!label) return;
       this.add.text(x, ry, label, {
         fontFamily: '"Baloo 2", sans-serif',
@@ -138,7 +142,7 @@ export class EveningScene extends Phaser.Scene {
         .setOrigin(1, 0);
     });
 
-    const kassaY = y + 34 + rows.length * 26 + 6;
+    const kassaY = y + 34 + rows.length * 24 + 6;
     this.add.text(x, kassaY, 'Kassa', {
       fontFamily: '"Baloo 2", sans-serif',
       fontSize: '15px',
@@ -220,8 +224,13 @@ export class EveningScene extends Phaser.Scene {
           fontSize: '18px',
           color: '#4e342e',
           fontStyle: 'bold',
+          backgroundColor: '#f7f0dd',
+          padding: { x: 6, y: 3 },
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      // Klicka på siffran för att skriva in antalet direkt.
+      qty.on('pointerdown', () => this.promptOrder(p.id));
       this.orderTexts.set(p.id, qty);
       c.add(qty);
       c.add(this.makeButton(x + 272, ry + 12, 32, 32, '+', () => this.changeOrder(p.id, 1)));
@@ -249,12 +258,34 @@ export class EveningScene extends Phaser.Scene {
   }
 
   private changeOrder(productId: string, delta: number): void {
+    this.setOrder(productId, (this.order[productId] ?? 0) + delta);
+  }
+
+  /** Låter spelaren skriva in ett exakt antal att beställa. */
+  private promptOrder(productId: string): void {
     const product = this.state.products.find((p) => p.id === productId);
     if (!product) return;
-    const next = Math.max(0, (this.order[productId] ?? 0) + delta);
-    const costDiff = (next - (this.order[productId] ?? 0)) * product.buyPrice;
+    const answer = window.prompt(
+      `Hur många ${product.name} vill du beställa?`,
+      String(this.order[productId] ?? 0),
+    );
+    if (answer === null) return;
+    const value = parseInt(answer.trim(), 10);
+    if (Number.isNaN(value)) return;
+    this.setOrder(productId, value);
+  }
+
+  /** Sätter beställt antal och håller det inom saldot och ≥ 0. */
+  private setOrder(productId: string, value: number): void {
+    const product = this.state.products.find((p) => p.id === productId);
+    if (!product) return;
+    let next = Math.max(0, Math.floor(value));
     // Beställ aldrig mer än kassan räcker till.
-    if (delta > 0 && this.orderCost + costDiff > this.state.money) return;
+    const costWithout = this.orderCost - (this.order[productId] ?? 0) * product.buyPrice;
+    if (product.buyPrice > 0) {
+      const affordable = Math.floor((this.state.money - costWithout) / product.buyPrice);
+      next = Math.min(next, Math.max(0, affordable));
+    }
     this.order[productId] = next;
     this.refreshOrderTexts();
   }
@@ -416,6 +447,7 @@ export class EveningScene extends Phaser.Scene {
       lostToday: 0,
       revenueToday: 0,
       costsToday: cost,
+      soldToday: {},
     };
 
     // Autospar i slutet av varje dag.
