@@ -29,6 +29,7 @@ export class EveningScene extends Phaser.Scene {
   private upgradeRefreshers: (() => void)[] = [];
   private orderContainer?: Phaser.GameObjects.Container;
   private wagesToday = 0;
+  private cardTerminalFeeToday = 0;
 
   constructor() {
     super('Evening');
@@ -41,10 +42,14 @@ export class EveningScene extends Phaser.Scene {
     this.orderTexts.clear();
     this.upgradeRefreshers = [];
 
-    // Betala hyra och löner för dagen.
+    // Betala hyra, löner och terminalhyra för dagen.
     this.wagesToday = this.state.staff.reduce((sum, m) => sum + m.dailyWage, 0);
-    this.state.money -= BALANCE.rentPerDay + this.wagesToday;
-    this.state.stats.costsToday += BALANCE.rentPerDay + this.wagesToday;
+    this.cardTerminalFeeToday = this.state.upgrades.includes('kortterminal')
+      ? BALANCE.cardTerminalDailyFee
+      : 0;
+    const fixedCosts = BALANCE.rentPerDay + this.wagesToday + this.cardTerminalFeeToday;
+    this.state.money -= fixedCosts;
+    this.state.stats.costsToday += fixedCosts;
 
     // Konkursräkning: negativt saldo på kvällen ökar skuldräknaren.
     if (this.state.money < 0) {
@@ -95,7 +100,8 @@ export class EveningScene extends Phaser.Scene {
   private buildSummary(x: number, y: number): void {
     const s = this.state.stats;
     const profit = s.revenueToday - s.costsToday;
-    const purchases = s.costsToday - BALANCE.rentPerDay - this.wagesToday;
+    const purchases =
+      s.costsToday - BALANCE.rentPerDay - this.wagesToday - this.cardTerminalFeeToday;
 
     this.add.text(x, y, 'Dagens resultat', {
       fontFamily: '"Baloo 2", sans-serif',
@@ -109,6 +115,9 @@ export class EveningScene extends Phaser.Scene {
       ['Varuinköp', `-${purchases} kr`, '#c62828'],
       ['Hyra', `-${BALANCE.rentPerDay} kr`, '#c62828'],
     ];
+    if (this.cardTerminalFeeToday > 0) {
+      rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, '#c62828']);
+    }
     if (this.wagesToday > 0) {
       rows.push(['Löner', `-${this.wagesToday} kr`, '#c62828']);
     }
