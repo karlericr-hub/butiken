@@ -22,7 +22,7 @@ export class HUD {
 
     this.moneyText = scene.add
       .text(16, 11, '', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '21px',
         color: '#ef6c00',
         fontStyle: 'bold',
@@ -31,7 +31,7 @@ export class HUD {
 
     this.dayText = scene.add
       .text(scene.scale.width / 2, 12, '', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '18px',
         color: '#4e342e',
       })
@@ -40,27 +40,11 @@ export class HUD {
 
     this.statsText = scene.add
       .text(scene.scale.width - 16, 13, '', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '15px',
         color: '#6d4c41',
       })
       .setOrigin(1, 0)
-      .setDepth(10001);
-
-    scene.add
-      .text(
-        scene.scale.width / 2,
-        scene.scale.height - 12,
-        'Klicka på kassan för att ta betalt  •  Klicka på en hylla för att fylla på',
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '14px',
-          color: '#4e342e',
-          backgroundColor: '#fffbf0',
-          padding: { x: 12, y: 5 },
-        },
-      )
-      .setOrigin(0.5, 1)
       .setDepth(10001);
 
     this.update();

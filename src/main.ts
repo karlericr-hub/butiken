@@ -18,4 +18,19 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, MenuScene, GameScene, EveningScene, GameOverScene],
 };
 
-new Phaser.Game(config);
+/**
+ * Väntar in typsnittet innan spelet startar så att texterna renderas med
+ * rätt font direkt (Phaser cachar texturerna vid första ritningen).
+ */
+function startGame(): void {
+  new Phaser.Game(config);
+}
+
+const fonts = document.fonts;
+if (fonts && fonts.load) {
+  Promise.all([fonts.load('600 16px "Baloo 2"'), fonts.load('800 16px "Baloo 2"')])
+    .catch(() => undefined)
+    .finally(startGame);
+} else {
+  startGame();
+}

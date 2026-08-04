@@ -35,7 +35,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add
       .text(W / 2 + 40, 168, 'Butiken', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '56px',
         color: '#f57f17',
         fontStyle: 'bold',
@@ -47,7 +47,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add
       .text(W / 2, 228, 'Driv din egen butik – hinner du med allt?', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '18px',
         color: '#6d4c41',
       })
@@ -72,20 +72,6 @@ export class MenuScene extends Phaser.Scene {
       });
     }
 
-    this.add
-      .text(
-        W / 2,
-        H - 74,
-        'Klicka på kassan för att ta betalt, på hyllorna för att fylla på\noch på golvet för att gå. Beställ varor och köp uppgraderingar på kvällen!',
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '14px',
-          color: '#5d4037',
-          align: 'center',
-          lineSpacing: 4,
-        },
-      )
-      .setOrigin(0.5);
   }
 
   private drawSun(x: number, y: number): void {
@@ -145,7 +131,7 @@ export class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     const txt = this.add
       .text(cx, cy, label, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '20px',
         color: '#ffffff',
         fontStyle: 'bold',

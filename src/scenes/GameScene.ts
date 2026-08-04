@@ -183,7 +183,7 @@ export class GameScene extends Phaser.Scene {
     this.state.pendingHint = undefined;
     const banner = this.add
       .text(this.scale.width / 2, 84, hint, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '17px',
         color: '#ffffff',
         backgroundColor: '#ff8f00',
@@ -203,7 +203,7 @@ export class GameScene extends Phaser.Scene {
   private showClosedBanner(): void {
     this.add
       .text(this.scale.width / 2, 76, 'STÄNGT – sista kunderna betjänas', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '22px',
         color: '#d84315',
         fontStyle: 'bold',
@@ -407,7 +407,7 @@ export class GameScene extends Phaser.Scene {
     const door = isoToScreen(0, 9);
     this.add
       .text(door.x - 34, door.y - 58, '🛒 Entré', {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '12px',
         color: '#fff8e1',
         backgroundColor: '#6d4c41',
@@ -549,7 +549,7 @@ export class GameScene extends Phaser.Scene {
   floatText(x: number, y: number, text: string, color: string): void {
     const t = this.add
       .text(x, y, text, {
-        fontFamily: 'sans-serif',
+        fontFamily: '"Baloo 2", sans-serif',
         fontSize: '16px',
         color,
         fontStyle: 'bold',
