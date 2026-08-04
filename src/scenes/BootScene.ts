@@ -27,7 +27,7 @@ export class BootScene extends Phaser.Scene {
     this.makeShadow();
     this.makeCoin();
     this.makeMini();
-    this.makeBubble();
+    this.makeMoodFaces();
     this.makePallet();
     this.makePlant();
 
@@ -270,16 +270,49 @@ export class BootScene extends Phaser.Scene {
     g.destroy();
   }
 
-  /** Pratbubbla med svans för kundernas humör. */
-  private makeBubble(): void {
-    const g = this.add.graphics();
-    g.fillStyle(0xffffff, 1);
-    g.fillRoundedRect(1, 1, 30, 19, 7);
-    g.fillTriangle(13, 19, 20, 19, 16, 25);
-    g.lineStyle(1.5, 0x90a4ae, 1);
-    g.strokeRoundedRect(1, 1, 30, 19, 7);
-    g.generateTexture('bubble', 32, 26);
-    g.destroy();
+  /**
+   * Fyra humör-smileys enligt HappyOrNot-skalan (mood0..mood3): mörkgrön,
+   * gul, orange, röd. Munnen går från stort leende till surmun. Själva
+   * smileyn bär färgen – ingen pratbubbla.
+   */
+  private makeMoodFaces(): void {
+    // curve > 0 = leende, < 0 = sur mun.
+    const faces = [
+      { color: 0x2ecc55, curve: 3.5 }, // mörkgrön – jättenöjd
+      { color: 0xf2c81e, curve: 1.5 }, // gul – näst högsta
+      { color: 0xef8b3b, curve: -1.5 }, // orange – lite missnöjd
+      { color: 0xe23b3b, curve: -3.5 }, // röd – arg
+    ];
+    const size = 22;
+    const cx = size / 2;
+    const cy = size / 2;
+    const r = 9;
+    faces.forEach((face, i) => {
+      const g = this.add.graphics();
+      // Ansikte med mörkare kant.
+      g.fillStyle(face.color, 1);
+      g.fillCircle(cx, cy, r);
+      g.lineStyle(1.5, 0x000000, 0.35);
+      g.strokeCircle(cx, cy, r);
+      // Ögon.
+      g.fillStyle(0x000000, 1);
+      g.fillCircle(cx - 3.5, cy - 2, 1.4);
+      g.fillCircle(cx + 3.5, cy - 2, 1.4);
+      // Mun – kurva ritad som en liten stapel av punkter.
+      g.lineStyle(1.6, 0x000000, 1);
+      const half = 4;
+      const my = cy + 3;
+      g.beginPath();
+      for (let sx = -half; sx <= half; sx++) {
+        const t = sx / half; // -1..1
+        const y = my - face.curve * (1 - t * t);
+        if (sx === -half) g.moveTo(cx + sx, y);
+        else g.lineTo(cx + sx, y);
+      }
+      g.strokePath();
+      g.generateTexture(`mood${i}`, size, size);
+      g.destroy();
+    });
   }
 
   /** Träpall som leveransen står på. */
