@@ -305,7 +305,7 @@ export class BootScene extends Phaser.Scene {
       g.beginPath();
       for (let sx = -half; sx <= half; sx++) {
         const t = sx / half; // -1..1
-        const y = my - face.curve * (1 - t * t);
+        const y = my + face.curve * (1 - t * t);
         if (sx === -half) g.moveTo(cx + sx, y);
         else g.lineTo(cx + sx, y);
       }
