@@ -43,12 +43,8 @@ export abstract class QueueStation extends Phaser.GameObjects.Container {
       .setOrigin(0.5, 1);
     this.add(text);
 
-    // Generös träffyta – barnvänligt att inte behöva pricka exakt.
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-40, -52, 80, 78),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    if (this.input) this.input.cursor = 'pointer';
+    // Klicket sker på markeringsrutan framför disken (InteractionMarker),
+    // inte på själva disken.
   }
 
   /** Där föreståndaren (eller personalen) står och arbetar. */
