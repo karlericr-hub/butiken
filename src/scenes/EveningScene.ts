@@ -5,6 +5,7 @@ import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { sfx } from '../systems/Sfx';
 import { SaveSystem } from '../systems/SaveSystem';
+import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -36,6 +37,7 @@ export class EveningScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupHiResCamera(this);
     this.state = this.registry.get('gameState') as GameState;
     this.upgradeSystem = new UpgradeSystem(this.state);
     this.order = {};
@@ -62,8 +64,8 @@ export class EveningScene extends Phaser.Scene {
       return;
     }
 
-    const W = this.scale.width;
-    this.add.rectangle(0, 0, W, this.scale.height, 0xffecc7).setOrigin(0, 0);
+    const W = VIEW_W;
+    this.add.rectangle(0, 0, W, VIEW_H, 0xffecc7).setOrigin(0, 0);
 
     // Kortpaneler bakom de tre kolumnerna
     const cards = this.add.graphics();

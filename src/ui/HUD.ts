@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { GameState } from '../state/GameState';
 import type { Checkout } from '../entities/Checkout';
+import { VIEW_W } from '../utils/scale';
 
 /** Alltid synlig överlagring: pengar, dag/klocka, betyg och kö. */
 export class HUD {
@@ -13,10 +14,10 @@ export class HUD {
     private state: GameState,
     private checkout: Checkout,
   ) {
-    const panel = scene.add.rectangle(0, 0, scene.scale.width, 48, 0xfffbf0, 0.95);
+    const panel = scene.add.rectangle(0, 0, VIEW_W, 48, 0xfffbf0, 0.95);
     panel.setOrigin(0, 0);
     panel.setDepth(10000);
-    const edge = scene.add.rectangle(0, 48, scene.scale.width, 3, 0xffb300, 0.9);
+    const edge = scene.add.rectangle(0, 48, VIEW_W, 3, 0xffb300, 0.9);
     edge.setOrigin(0, 0);
     edge.setDepth(10000);
 
@@ -30,7 +31,7 @@ export class HUD {
       .setDepth(10001);
 
     this.dayText = scene.add
-      .text(scene.scale.width / 2, 12, '', {
+      .text(VIEW_W / 2, 12, '', {
         fontFamily: '"Baloo 2", sans-serif',
         fontSize: '18px',
         color: '#4e342e',
@@ -39,7 +40,7 @@ export class HUD {
       .setDepth(10001);
 
     this.statsText = scene.add
-      .text(scene.scale.width - 16, 13, '', {
+      .text(VIEW_W - 16, 13, '', {
         fontFamily: '"Baloo 2", sans-serif',
         fontSize: '15px',
         color: '#6d4c41',

@@ -1,7 +1,108 @@
 import Phaser from 'phaser';
+import { RENDER_SCALE } from '../utils/scale';
 
 /** Tröjfärger för kundvarianterna cust0..cust7. */
 export const CUSTOMER_VARIANTS = 8;
+
+const S = RENDER_SCALE;
+
+/**
+ * Ritverktyg som skalar all geometri med RENDER_SCALE innan texturen bakas.
+ * Ritkoden nedan är oförändrad och uttryckt i designpixlar; wrappern gör att
+ * texturerna genereras i full renderupplösning så att de blir skarpa när
+ * kameran zoomar upp världen. Färger och vinklar lämnas orörda.
+ */
+class Tex {
+  private g: Phaser.GameObjects.Graphics;
+
+  constructor(scene: Phaser.Scene) {
+    this.g = scene.add.graphics();
+  }
+
+  fillStyle(color: number, alpha?: number): this {
+    this.g.fillStyle(color, alpha);
+    return this;
+  }
+
+  lineStyle(width: number, color: number, alpha?: number): this {
+    this.g.lineStyle(width * S, color, alpha);
+    return this;
+  }
+
+  fillRoundedRect(x: number, y: number, w: number, h: number, radius: number): this {
+    this.g.fillRoundedRect(x * S, y * S, w * S, h * S, radius * S);
+    return this;
+  }
+
+  strokeRoundedRect(x: number, y: number, w: number, h: number, radius: number): this {
+    this.g.strokeRoundedRect(x * S, y * S, w * S, h * S, radius * S);
+    return this;
+  }
+
+  fillRect(x: number, y: number, w: number, h: number): this {
+    this.g.fillRect(x * S, y * S, w * S, h * S);
+    return this;
+  }
+
+  fillCircle(x: number, y: number, radius: number): this {
+    this.g.fillCircle(x * S, y * S, radius * S);
+    return this;
+  }
+
+  strokeCircle(x: number, y: number, radius: number): this {
+    this.g.strokeCircle(x * S, y * S, radius * S);
+    return this;
+  }
+
+  fillEllipse(x: number, y: number, w: number, h: number): this {
+    this.g.fillEllipse(x * S, y * S, w * S, h * S);
+    return this;
+  }
+
+  beginPath(): this {
+    this.g.beginPath();
+    return this;
+  }
+
+  closePath(): this {
+    this.g.closePath();
+    return this;
+  }
+
+  fillPath(): this {
+    this.g.fillPath();
+    return this;
+  }
+
+  strokePath(): this {
+    this.g.strokePath();
+    return this;
+  }
+
+  moveTo(x: number, y: number): this {
+    this.g.moveTo(x * S, y * S);
+    return this;
+  }
+
+  lineTo(x: number, y: number): this {
+    this.g.lineTo(x * S, y * S);
+    return this;
+  }
+
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number): this {
+    this.g.arc(x * S, y * S, radius * S, startAngle, endAngle);
+    return this;
+  }
+
+  generateTexture(key: string, width: number, height: number): this {
+    this.g.generateTexture(key, Math.ceil(width * S), Math.ceil(height * S));
+    return this;
+  }
+
+  destroy(): void {
+    this.g.destroy();
+  }
+}
 
 const SHIRT_COLORS = [
   0xe57373, 0x64b5f6, 0xffd54f, 0xba68c8, 0x81c784, 0xff8a65, 0x4dd0e1, 0xf06292,
@@ -57,7 +158,7 @@ export class BootScene extends Phaser.Scene {
     skin: number,
     apron: boolean,
   ): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     const darkerShirt = Phaser.Display.Color.ValueToColor(shirt).darken(18).color;
 
     // Ben
@@ -91,7 +192,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   private makeTile(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0xffffff, 1);
     g.beginPath();
     g.moveTo(32, 0);
@@ -108,7 +209,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Neutral kub som tintas (kassa- och paketdisk). */
   private makeCube(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0xffffff, 1);
     g.beginPath();
     g.moveTo(32, 0);
@@ -139,7 +240,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Hyllmöbel i trä med kantlist och sockel. Färdigfärgad. */
   private makeShelfCube(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     // Ovansida (ljus träyta)
     g.fillStyle(0xf3ead9, 1);
     g.beginPath();
@@ -193,7 +294,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Kassaapparat med skärm och knappar. */
   private makeTill(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0x37474f, 1);
     g.fillRoundedRect(0, 5, 24, 13, 3);
     g.fillStyle(0x263238, 1);
@@ -210,7 +311,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   private makeParcel(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0xa1785c, 1);
     g.fillRoundedRect(0, 2, 18, 14, 2);
     g.fillStyle(0xd7ccc8, 1);
@@ -222,7 +323,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   private makeShadow(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0x000000, 1);
     g.fillEllipse(14, 5, 28, 10);
     g.generateTexture('shadow', 28, 10);
@@ -230,7 +331,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   private makeCoin(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0xffb300, 1);
     g.fillCircle(5, 5, 5);
     g.fillStyle(0xffd54f, 1);
@@ -241,7 +342,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Liten varulåda som visas på hylltopparna (tintas per vara). */
   private makeMini(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0xffffff, 1);
     g.beginPath();
     g.moveTo(7, 0);
@@ -288,7 +389,7 @@ export class BootScene extends Phaser.Scene {
     const cy = size / 2;
     const r = 9;
     faces.forEach((face, i) => {
-      const g = this.add.graphics();
+      const g = new Tex(this);
       // Ansikte med mörkare kant.
       g.fillStyle(face.color, 1);
       g.fillCircle(cx, cy, r);
@@ -317,7 +418,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Träpall som leveransen står på. */
   private makePallet(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     g.fillStyle(0x9c7a54, 1);
     g.beginPath();
     g.moveTo(26, 0);
@@ -341,7 +442,7 @@ export class BootScene extends Phaser.Scene {
 
   /** Krukväxt som piffar upp butiken. */
   private makePlant(): void {
-    const g = this.add.graphics();
+    const g = new Tex(this);
     // Kruka
     g.fillStyle(0xbf6b4f, 1);
     g.beginPath();

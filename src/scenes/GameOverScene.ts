@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { GameState } from '../state/GameState';
 import { SaveSystem } from '../systems/SaveSystem';
+import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -10,8 +11,9 @@ export class GameOverScene extends Phaser.Scene {
   create(): void {
     const state = this.registry.get('gameState') as GameState;
     SaveSystem.clear();
-    const W = this.scale.width;
-    const H = this.scale.height;
+    setupHiResCamera(this);
+    const W = VIEW_W;
+    const H = VIEW_H;
 
     this.add.rectangle(0, 0, W, H, 0xffe3d4).setOrigin(0, 0);
 
