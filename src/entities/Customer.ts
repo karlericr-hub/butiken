@@ -20,14 +20,10 @@ export type Mood = 'green' | 'yellow' | 'orange' | 'red';
 
 /**
  * Humörskala à la HappyOrNot – fyra nivåer där näst högsta är gul (inte
- * ljusgrön). Index 0 = gladast, index 3 = argast. Bubblan tintas med färgen.
+ * ljusgrön). Index 0 = gladast, index 3 = argast. Själva smileyn (texturerna
+ * mood0..mood3, genererade i BootScene) bär färgen – ingen pratbubbla.
  */
-const MOOD_LEVELS: { emoji: string; tint: number }[] = [
-  { emoji: '😄', tint: 0x2ecc55 }, // mörkgrön – jättenöjd
-  { emoji: '🙂', tint: 0xf2c81e }, // gul – näst högsta
-  { emoji: '😕', tint: 0xef8b3b }, // orange – lite missnöjd
-  { emoji: '😠', tint: 0xe23b3b }, // röd – arg
-];
+const MOOD_NAMES: Mood[] = ['green', 'yellow', 'orange', 'red'];
 
 export class Customer extends Actor {
   state: CustomerState = 'shopping';
@@ -40,9 +36,7 @@ export class Customer extends Actor {
   private queueIndex = 0;
   private patienceTotalMs: number;
   private patienceLeftMs: number;
-  private moodBubble?: Phaser.GameObjects.Container;
-  private moodBubbleSprite?: Phaser.GameObjects.Sprite;
-  private moodText?: Phaser.GameObjects.Text;
+  private moodFace?: Phaser.GameObjects.Sprite;
 
   constructor(
     scene: Phaser.Scene,
@@ -67,7 +61,7 @@ export class Customer extends Actor {
     this.shoppingList = [...shoppingList];
     this.patienceTotalMs = patienceMs;
     this.patienceLeftMs = patienceMs;
-    this.showMoodBubble();
+    this.showMoodFace();
     this.startNextTask();
   }
 
@@ -175,23 +169,15 @@ export class Customer extends Actor {
     this.leave();
   }
 
-  private showMoodBubble(): void {
-    this.moodBubble = this.scene.add.container(this.x, this.y - 44);
-    this.moodBubbleSprite = this.scene.add
-      .sprite(0, 0, 'bubble')
-      .setOrigin(0.5, 1)
-      .setTint(MOOD_LEVELS[this.moodLevel].tint);
-    this.moodText = this.scene.add
-      .text(0, -15, MOOD_LEVELS[this.moodLevel].emoji, { fontSize: '13px' })
+  private showMoodFace(): void {
+    this.moodFace = this.scene.add
+      .sprite(this.x, this.y - 40, `mood${this.moodLevel}`)
       .setOrigin(0.5);
-    this.moodBubble.add([this.moodBubbleSprite, this.moodText]);
   }
 
-  private hideMoodBubble(): void {
-    this.moodBubble?.destroy();
-    this.moodBubble = undefined;
-    this.moodBubbleSprite = undefined;
-    this.moodText = undefined;
+  private hideMoodFace(): void {
+    this.moodFace?.destroy();
+    this.moodFace = undefined;
   }
 
   /**
@@ -205,7 +191,7 @@ export class Customer extends Actor {
       if (ratio <= 0.2) level += 2;
       else if (ratio <= 0.5) level += 1;
     }
-    return Phaser.Math.Clamp(level, 0, MOOD_LEVELS.length - 1);
+    return Phaser.Math.Clamp(level, 0, MOOD_NAMES.length - 1);
   }
 
   private get inQueue(): boolean {
@@ -222,17 +208,16 @@ export class Customer extends Actor {
       }
     }
     this.moodLevel = this.computeMoodLevel();
-    this.mood = (['green', 'yellow', 'orange', 'red'] as Mood[])[this.moodLevel];
-    if (this.moodBubble && this.moodText && this.moodBubbleSprite) {
-      this.moodText.setText(MOOD_LEVELS[this.moodLevel].emoji);
-      this.moodBubbleSprite.setTint(MOOD_LEVELS[this.moodLevel].tint);
-      this.moodBubble.setPosition(this.x, this.y - 44);
-      this.moodBubble.setDepth(this.depth + 1);
+    this.mood = MOOD_NAMES[this.moodLevel];
+    if (this.moodFace) {
+      this.moodFace.setTexture(`mood${this.moodLevel}`);
+      this.moodFace.setPosition(this.x, this.y - 40);
+      this.moodFace.setDepth(this.depth + 1);
     }
   }
 
   destroy(fromScene?: boolean): void {
-    this.hideMoodBubble();
+    this.hideMoodFace();
     super.destroy(fromScene);
   }
 }
