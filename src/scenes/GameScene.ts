@@ -8,6 +8,8 @@ import { Shelf } from '../entities/Shelf';
 import { Checkout } from '../entities/Checkout';
 import { ParcelDesk } from '../entities/ParcelDesk';
 import { Delivery } from '../entities/Delivery';
+import { InteractionMarker } from '../entities/InteractionMarker';
+import { NavGrid } from '../systems/NavGrid';
 import { CustomerSystem } from '../systems/CustomerSystem';
 import { StaffSystem } from '../systems/StaffSystem';
 import { EconomySystem } from '../systems/EconomySystem';
@@ -74,17 +76,39 @@ export class GameScene extends Phaser.Scene {
       const pos = SHELF_POSITIONS[product.id];
       if (!pos || !isProductUnlocked(this.state, product)) continue;
       const shelf = new Shelf(this, pos.gx, pos.gy, product);
-      shelf.on('pointerdown', () => this.onShelfClicked(shelf));
+      // Klickbar ruta framför hyllan (mot golvet), inte hyllan själv.
+      const marker = new InteractionMarker(this, pos.gx, pos.gy + 1);
+      marker.on('pointerdown', () => this.onShelfClicked(shelf));
       this.shelves.set(product.id, shelf);
     }
 
     this.checkout = new Checkout(this, 7, 6, this.upgrades.maxQueueLength);
-    this.checkout.on('pointerdown', () => this.onCheckoutClicked());
+    const checkoutMarker = new InteractionMarker(
+      this,
+      this.checkout.gridX + 1,
+      this.checkout.gridY,
+      0x64b5f6,
+    );
+    checkoutMarker.on('pointerdown', () => this.onCheckoutClicked());
 
     if (this.state.isParcelAgent) {
       this.parcelDesk = new ParcelDesk(this, 8, 3, BALANCE.parcelQueueMax);
-      this.parcelDesk.on('pointerdown', () => this.onParcelDeskClicked());
+      const parcelMarker = new InteractionMarker(
+        this,
+        this.parcelDesk.gridX + 1,
+        this.parcelDesk.gridY,
+        0x64b5f6,
+      );
+      parcelMarker.on('pointerdown', () => this.onParcelDeskClicked());
     }
+
+    // Bygg navigeringsrutnätet: hyllor, kassa och paketdisk blockeras så att
+    // figurerna går runt dem i stället för rakt igenom.
+    const navGrid = new NavGrid();
+    for (const shelf of this.shelves.values()) navGrid.block(shelf.gridX, shelf.gridY);
+    navGrid.block(this.checkout.gridX, this.checkout.gridY);
+    if (this.parcelDesk) navGrid.block(this.parcelDesk.gridX, this.parcelDesk.gridY);
+    this.registry.set('navGrid', navGrid);
 
     const managerStart = isoToScreen(4, 5);
     this.manager = new Manager(this, managerStart.x, managerStart.y);

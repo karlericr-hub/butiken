@@ -56,12 +56,8 @@ export class Shelf extends Phaser.GameObjects.Container {
 
     this.setDepth(pos.y);
     this.setSize(64, 56);
-    // Generös träffyta – barnvänligt att inte behöva pricka exakt.
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-40, -52, 80, 78),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    if (this.input) this.input.cursor = 'pointer';
+    // Klicket sker på markeringsrutan framför hyllan (InteractionMarker),
+    // inte på själva hyllan.
     scene.add.existing(this);
   }
 

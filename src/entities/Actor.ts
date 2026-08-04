@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
+import type { NavGrid } from '../systems/NavGrid';
 
-/** Sprite som kan gå i rak linje till en punkt och meddela när den är framme. */
+/** Sprite som går till en punkt – runt hinder via NavGrid – och säger till när den är framme. */
 export class Actor extends Phaser.GameObjects.Sprite {
   private targetX = 0;
   private targetY = 0;
   private moving = false;
   private onArrive?: () => void;
+  private path: { x: number; y: number }[] = [];
   private shadow: Phaser.GameObjects.Sprite;
 
   constructor(
@@ -22,10 +24,26 @@ export class Actor extends Phaser.GameObjects.Sprite {
   }
 
   moveTo(x: number, y: number, onArrive?: () => void): void {
-    this.targetX = x;
-    this.targetY = y;
     this.onArrive = onArrive;
-    this.moving = true;
+    const grid = this.scene.registry.get('navGrid') as NavGrid | undefined;
+    const route = grid ? grid.route(this.x, this.y, x, y) : [{ x, y }];
+    this.path = route.length > 0 ? route : [{ x, y }];
+    this.advancePath();
+  }
+
+  /** Gå vidare till nästa delmål, eller avsluta och anropa callbacken. */
+  private advancePath(): void {
+    const next = this.path.shift();
+    if (next) {
+      this.targetX = next.x;
+      this.targetY = next.y;
+      this.moving = true;
+    } else {
+      this.moving = false;
+      const cb = this.onArrive;
+      this.onArrive = undefined;
+      cb?.();
+    }
   }
 
   get isMoving(): boolean {
@@ -34,6 +52,7 @@ export class Actor extends Phaser.GameObjects.Sprite {
 
   stopMoving(): void {
     this.moving = false;
+    this.path = [];
     this.onArrive = undefined;
   }
 
@@ -44,10 +63,7 @@ export class Actor extends Phaser.GameObjects.Sprite {
       const step = (this.speed * delta) / 1000;
       if (dist <= step) {
         this.setPosition(this.targetX, this.targetY);
-        this.moving = false;
-        const cb = this.onArrive;
-        this.onArrive = undefined;
-        cb?.();
+        this.advancePath();
       } else {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, this.targetX, this.targetY);
         this.x += Math.cos(angle) * step;
