@@ -51,6 +51,8 @@ export interface GameState {
     lostToday: number;
     revenueToday: number;
     costsToday: number;
+    /** Antal sålda enheter per produkt-id under dagen. */
+    soldToday: Record<string, number>;
   };
 }
 
@@ -80,6 +82,7 @@ export function createInitialState(startMoney: number, products: Product[]): Gam
       lostToday: 0,
       revenueToday: 0,
       costsToday: 0,
+      soldToday: {},
     },
   };
 }
