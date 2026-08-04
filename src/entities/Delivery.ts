@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { isoToScreen } from '../utils/iso';
+import { INV_SCALE } from '../utils/scale';
 
 /** En leveranspall med beställda varor som ska lastas in i lagret. */
 export class Delivery extends Phaser.GameObjects.Container {
@@ -19,12 +20,12 @@ export class Delivery extends Phaser.GameObjects.Container {
     this.gridY = gridY;
     this.contents = { ...contents };
 
-    const pallet = scene.add.sprite(0, 14, 'pallet').setOrigin(0.5, 1);
+    const pallet = scene.add.sprite(0, 14, 'pallet').setOrigin(0.5, 1).setScale(INV_SCALE);
     this.add(pallet);
-    const box1 = scene.add.sprite(0, 0, 'cube').setOrigin(0.5, 40 / 56).setScale(0.8);
+    const box1 = scene.add.sprite(0, 0, 'cube').setOrigin(0.5, 40 / 56).setScale(0.8 * INV_SCALE);
     box1.setTint(0xc8a06a);
     this.add(box1);
-    const box2 = scene.add.sprite(0, -22, 'cube').setOrigin(0.5, 40 / 56).setScale(0.55);
+    const box2 = scene.add.sprite(0, -22, 'cube').setOrigin(0.5, 40 / 56).setScale(0.55 * INV_SCALE);
     box2.setTint(0xd8b587);
     this.add(box2);
 

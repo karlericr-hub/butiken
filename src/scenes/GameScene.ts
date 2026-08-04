@@ -3,6 +3,7 @@ import { createInitialState, isProductUnlocked, type GameState } from '../state/
 import { PRODUCTS } from '../config/products';
 import { BALANCE } from '../config/balance';
 import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
+import { INV_SCALE, VIEW_W, setupHiResCamera } from '../utils/scale';
 import { Manager } from '../entities/Manager';
 import { Shelf } from '../entities/Shelf';
 import { Checkout } from '../entities/Checkout';
@@ -56,6 +57,8 @@ export class GameScene extends Phaser.Scene {
     this.customersSentHome = false;
     this.paymentBusy = false;
     this.parcelBusy = false;
+
+    setupHiResCamera(this);
 
     let state = this.registry.get('gameState') as GameState | undefined;
     if (!state) {
@@ -206,7 +209,7 @@ export class GameScene extends Phaser.Scene {
     if (!hint) return;
     this.state.pendingHint = undefined;
     const banner = this.add
-      .text(this.scale.width / 2, 84, hint, {
+      .text(VIEW_W / 2, 84, hint, {
         fontFamily: '"Baloo 2", sans-serif',
         fontSize: '17px',
         color: '#ffffff',
@@ -226,7 +229,7 @@ export class GameScene extends Phaser.Scene {
 
   private showClosedBanner(): void {
     this.add
-      .text(this.scale.width / 2, 76, 'STÄNGT – sista kunderna betjänas', {
+      .text(VIEW_W / 2, 76, 'STÄNGT – sista kunderna betjänas', {
         fontFamily: '"Baloo 2", sans-serif',
         fontSize: '22px',
         color: '#d84315',
@@ -323,6 +326,7 @@ export class GameScene extends Phaser.Scene {
         const pos = isoToScreen(gx, gy);
         const tile = this.add.sprite(pos.x, pos.y + 16, 'tile');
         tile.setOrigin(0.5, 0.5);
+        tile.setScale(INV_SCALE);
         const base = (gx + gy) % 2 === 0 ? 0xf0e7d3 : 0xe5dbc2;
         // Liten slumpvariation gör golvet levande utan att bli plottrigt.
         tile.setTint(
@@ -336,6 +340,7 @@ export class GameScene extends Phaser.Scene {
       const pos = isoToScreen(0, gy);
       const mat = this.add.sprite(pos.x, pos.y + 16, 'tile');
       mat.setOrigin(0.5, 0.5);
+      mat.setScale(INV_SCALE);
       mat.setTint(0x9c786c);
       mat.setDepth(-999);
     }
@@ -422,9 +427,9 @@ export class GameScene extends Phaser.Scene {
     ];
     for (const [gx, gy] of spots) {
       const p = isoToScreen(gx, gy);
-      const plant = this.add.sprite(p.x, p.y, 'plant').setOrigin(0.5, 1);
+      const plant = this.add.sprite(p.x, p.y, 'plant').setOrigin(0.5, 1).setScale(INV_SCALE);
       plant.setDepth(p.y);
-      const shadow = this.add.sprite(p.x, p.y + 1, 'shadow').setAlpha(0.2);
+      const shadow = this.add.sprite(p.x, p.y + 1, 'shadow').setAlpha(0.2).setScale(INV_SCALE);
       shadow.setDepth(p.y - 1);
     }
 
@@ -449,7 +454,7 @@ export class GameScene extends Phaser.Scene {
       angle: { min: 230, max: 310 },
       gravityY: 520,
       lifespan: 650,
-      scale: { start: 1, end: 0.4 },
+      scale: { start: INV_SCALE, end: 0.4 * INV_SCALE },
       emitting: false,
     });
     particles.setDepth(9600);
