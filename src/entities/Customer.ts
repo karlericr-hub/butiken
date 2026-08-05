@@ -178,7 +178,7 @@ export class Customer extends Actor {
     this.moodFace = this.scene.add
       .sprite(this.x, this.y - 40, `mood${this.moodLevel}`)
       .setOrigin(0.5)
-      .setScale(INV_SCALE);
+      .setScale(INV_SCALE * MOOD_FACE_SCALE);
   }
 
   private hideMoodFace(): void {
