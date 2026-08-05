@@ -18,6 +18,8 @@ export const SaveSystem = {
       if (!raw) return undefined;
       const state = JSON.parse(raw) as GameState;
       if (typeof state.day !== 'number' || !Array.isArray(state.products)) return undefined;
+      // Bakåtkompatibilitet: äldre sparfiler saknar dagens försäljningsstatistik.
+      state.stats.soldToday ??= {};
       return state;
     } catch {
       return undefined;

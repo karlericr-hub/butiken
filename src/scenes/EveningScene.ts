@@ -5,6 +5,7 @@ import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { sfx } from '../systems/Sfx';
 import { SaveSystem } from '../systems/SaveSystem';
+import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -29,22 +30,28 @@ export class EveningScene extends Phaser.Scene {
   private upgradeRefreshers: (() => void)[] = [];
   private orderContainer?: Phaser.GameObjects.Container;
   private wagesToday = 0;
+  private cardTerminalFeeToday = 0;
 
   constructor() {
     super('Evening');
   }
 
   create(): void {
+    setupHiResCamera(this);
     this.state = this.registry.get('gameState') as GameState;
     this.upgradeSystem = new UpgradeSystem(this.state);
     this.order = {};
     this.orderTexts.clear();
     this.upgradeRefreshers = [];
 
-    // Betala hyra och löner för dagen.
+    // Betala hyra, löner och terminalhyra för dagen.
     this.wagesToday = this.state.staff.reduce((sum, m) => sum + m.dailyWage, 0);
-    this.state.money -= BALANCE.rentPerDay + this.wagesToday;
-    this.state.stats.costsToday += BALANCE.rentPerDay + this.wagesToday;
+    this.cardTerminalFeeToday = this.state.upgrades.includes('kortterminal')
+      ? BALANCE.cardTerminalDailyFee
+      : 0;
+    const fixedCosts = BALANCE.rentPerDay + this.wagesToday + this.cardTerminalFeeToday;
+    this.state.money -= fixedCosts;
+    this.state.stats.costsToday += fixedCosts;
 
     // Konkursräkning: negativt saldo på kvällen ökar skuldräknaren.
     if (this.state.money < 0) {
@@ -57,8 +64,8 @@ export class EveningScene extends Phaser.Scene {
       return;
     }
 
-    const W = this.scale.width;
-    this.add.rectangle(0, 0, W, this.scale.height, 0xffecc7).setOrigin(0, 0);
+    const W = VIEW_W;
+    this.add.rectangle(0, 0, W, VIEW_H, 0xffecc7).setOrigin(0, 0);
 
     // Kortpaneler bakom de tre kolumnerna
     const cards = this.add.graphics();
@@ -95,7 +102,8 @@ export class EveningScene extends Phaser.Scene {
   private buildSummary(x: number, y: number): void {
     const s = this.state.stats;
     const profit = s.revenueToday - s.costsToday;
-    const purchases = s.costsToday - BALANCE.rentPerDay - this.wagesToday;
+    const purchases =
+      s.costsToday - BALANCE.rentPerDay - this.wagesToday - this.cardTerminalFeeToday;
 
     this.add.text(x, y, 'Dagens resultat', {
       fontFamily: '"Baloo 2", sans-serif',
@@ -109,6 +117,9 @@ export class EveningScene extends Phaser.Scene {
       ['Varuinköp', `-${purchases} kr`, '#c62828'],
       ['Hyra', `-${BALANCE.rentPerDay} kr`, '#c62828'],
     ];
+    if (this.cardTerminalFeeToday > 0) {
+      rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, '#c62828']);
+    }
     if (this.wagesToday > 0) {
       rows.push(['Löner', `-${this.wagesToday} kr`, '#c62828']);
     }
@@ -118,10 +129,14 @@ export class EveningScene extends Phaser.Scene {
       ['Betjänade kunder', `${s.servedToday}`, '#6d4c41'],
       ['Förlorade kunder', `${s.lostToday}`, '#6d4c41'],
       ['Butiksbetyg', `⭐ ${Math.round(this.state.rating)}`, '#ef6c00'],
+      ['Sålda varor idag', '', '#4e342e'],
     );
+    for (const p of this.state.products.filter((prod) => isProductUnlocked(this.state, prod))) {
+      rows.push([`  ${p.name}`, `${s.soldToday[p.id] ?? 0} st`, '#6d4c41']);
+    }
 
     rows.forEach(([label, value, color], i) => {
-      const ry = y + 34 + i * 26;
+      const ry = y + 34 + i * 24;
       if (!label) return;
       this.add.text(x, ry, label, {
         fontFamily: '"Baloo 2", sans-serif',
@@ -138,7 +153,7 @@ export class EveningScene extends Phaser.Scene {
         .setOrigin(1, 0);
     });
 
-    const kassaY = y + 34 + rows.length * 26 + 6;
+    const kassaY = y + 34 + rows.length * 24 + 6;
     this.add.text(x, kassaY, 'Kassa', {
       fontFamily: '"Baloo 2", sans-serif',
       fontSize: '15px',
@@ -220,8 +235,13 @@ export class EveningScene extends Phaser.Scene {
           fontSize: '18px',
           color: '#4e342e',
           fontStyle: 'bold',
+          backgroundColor: '#f7f0dd',
+          padding: { x: 6, y: 3 },
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+      // Klicka på siffran för att skriva in antalet direkt.
+      qty.on('pointerdown', () => this.promptOrder(p.id));
       this.orderTexts.set(p.id, qty);
       c.add(qty);
       c.add(this.makeButton(x + 272, ry + 12, 32, 32, '+', () => this.changeOrder(p.id, 1)));
@@ -249,12 +269,34 @@ export class EveningScene extends Phaser.Scene {
   }
 
   private changeOrder(productId: string, delta: number): void {
+    this.setOrder(productId, (this.order[productId] ?? 0) + delta);
+  }
+
+  /** Låter spelaren skriva in ett exakt antal att beställa. */
+  private promptOrder(productId: string): void {
     const product = this.state.products.find((p) => p.id === productId);
     if (!product) return;
-    const next = Math.max(0, (this.order[productId] ?? 0) + delta);
-    const costDiff = (next - (this.order[productId] ?? 0)) * product.buyPrice;
+    const answer = window.prompt(
+      `Hur många ${product.name} vill du beställa?`,
+      String(this.order[productId] ?? 0),
+    );
+    if (answer === null) return;
+    const value = parseInt(answer.trim(), 10);
+    if (Number.isNaN(value)) return;
+    this.setOrder(productId, value);
+  }
+
+  /** Sätter beställt antal och håller det inom saldot och ≥ 0. */
+  private setOrder(productId: string, value: number): void {
+    const product = this.state.products.find((p) => p.id === productId);
+    if (!product) return;
+    let next = Math.max(0, Math.floor(value));
     // Beställ aldrig mer än kassan räcker till.
-    if (delta > 0 && this.orderCost + costDiff > this.state.money) return;
+    const costWithout = this.orderCost - (this.order[productId] ?? 0) * product.buyPrice;
+    if (product.buyPrice > 0) {
+      const affordable = Math.floor((this.state.money - costWithout) / product.buyPrice);
+      next = Math.min(next, Math.max(0, affordable));
+    }
     this.order[productId] = next;
     this.refreshOrderTexts();
   }
@@ -416,6 +458,7 @@ export class EveningScene extends Phaser.Scene {
       lostToday: 0,
       revenueToday: 0,
       costsToday: cost,
+      soldToday: {},
     };
 
     // Autospar i slutet av varje dag.

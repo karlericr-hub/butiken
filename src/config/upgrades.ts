@@ -13,7 +13,7 @@ export const UPGRADES: UpgradeDef[] = [
   {
     id: 'kortterminal',
     name: 'Kortterminal',
-    description: 'Kunderna betalar nästan dubbelt så snabbt i kassan.',
+    description: 'Kunderna betalar nästan dubbelt så snabbt i kassan. Terminalhyra 20 kr/dag.',
     cost: 150,
   },
   {

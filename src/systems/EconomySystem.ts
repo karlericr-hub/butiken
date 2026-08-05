@@ -11,6 +11,9 @@ export class EconomySystem {
     this.state.money += total;
     this.state.stats.revenueToday += total;
     this.state.stats.servedToday++;
+    for (const p of basket) {
+      this.state.stats.soldToday[p.id] = (this.state.stats.soldToday[p.id] ?? 0) + 1;
+    }
     this.state.rating = Math.min(100, this.state.rating + BALANCE.ratingGainPerSale);
     return total;
   }

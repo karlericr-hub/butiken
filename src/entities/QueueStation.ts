@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { isoToScreen } from '../utils/iso';
+import { INV_SCALE } from '../utils/scale';
 import type { Customer } from './Customer';
 
 /** Gemensam bas för stationer med FIFO-kö (kassa, paketdisk). */
@@ -26,11 +27,13 @@ export abstract class QueueStation extends Phaser.GameObjects.Container {
   protected buildVisuals(tint: number, label: string, topTexture: string): void {
     const cube = this.scene.add.sprite(0, 0, 'cube');
     cube.setOrigin(0.5, 40 / 56);
+    cube.setScale(INV_SCALE);
     cube.setTint(tint);
     this.add(cube);
 
     const top = this.scene.add.sprite(0, -30, topTexture);
     top.setOrigin(0.5, 1);
+    top.setScale(INV_SCALE);
     this.add(top);
 
     const text = this.scene.add
@@ -43,12 +46,8 @@ export abstract class QueueStation extends Phaser.GameObjects.Container {
       .setOrigin(0.5, 1);
     this.add(text);
 
-    // Generös träffyta – barnvänligt att inte behöva pricka exakt.
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-40, -52, 80, 78),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    if (this.input) this.input.cursor = 'pointer';
+    // Klicket sker på markeringsrutan framför disken (InteractionMarker),
+    // inte på själva disken.
   }
 
   /** Där föreståndaren (eller personalen) står och arbetar. */

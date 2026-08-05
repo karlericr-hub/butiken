@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Actor } from './Actor';
 import { BALANCE } from '../config/balance';
+import { INV_SCALE } from '../utils/scale';
 import type { Product } from '../state/GameState';
 import type { Shelf } from './Shelf';
 import type { QueueStation } from './QueueStation';
@@ -175,9 +176,9 @@ export class Customer extends Actor {
 
   private showMoodFace(): void {
     this.moodFace = this.scene.add
-      .sprite(this.x, this.y - MOOD_FACE_OFFSET_Y, `mood${this.moodLevel}`)
+      .sprite(this.x, this.y - 40, `mood${this.moodLevel}`)
       .setOrigin(0.5)
-      .setScale(MOOD_FACE_SCALE);
+      .setScale(INV_SCALE);
   }
 
   private hideMoodFace(): void {

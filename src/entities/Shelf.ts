@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { Product } from '../state/GameState';
 import { isoToScreen } from '../utils/iso';
+import { INV_SCALE } from '../utils/scale';
 import { PRODUCT_COLORS } from '../config/products';
 import { sfx } from '../systems/Sfx';
 
@@ -31,10 +32,12 @@ export class Shelf extends Phaser.GameObjects.Container {
 
     const cube = scene.add.sprite(0, 0, 'shelfCube');
     cube.setOrigin(0.5, 40 / 60);
+    cube.setScale(INV_SCALE);
     this.add(cube);
 
     for (const [mx, my] of MINI_POSITIONS) {
       const mini = scene.add.sprite(mx, my, 'mini');
+      mini.setScale(INV_SCALE);
       mini.setTint(PRODUCT_COLORS[product.id] ?? 0xcccccc);
       mini.setVisible(false);
       this.add(mini);
@@ -56,12 +59,8 @@ export class Shelf extends Phaser.GameObjects.Container {
 
     this.setDepth(pos.y);
     this.setSize(64, 56);
-    // Generös träffyta – barnvänligt att inte behöva pricka exakt.
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-40, -52, 80, 78),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    if (this.input) this.input.cursor = 'pointer';
+    // Klicket sker på markeringsrutan framför hyllan (InteractionMarker),
+    // inte på själva hyllan.
     scene.add.existing(this);
   }
 
