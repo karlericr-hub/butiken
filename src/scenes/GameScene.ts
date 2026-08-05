@@ -44,6 +44,8 @@ export class GameScene extends Phaser.Scene {
   private customersSentHome = false;
   private paymentBusy = false;
   private parcelBusy = false;
+  /** Klickzoner för stationerna (i rutnätskoordinater) med tillhörande handling. */
+  private interactables: { gx: number; gy: number; act: () => void }[] = [];
 
   constructor() {
     super('Game');
@@ -57,6 +59,7 @@ export class GameScene extends Phaser.Scene {
     this.customersSentHome = false;
     this.paymentBusy = false;
     this.parcelBusy = false;
+    this.interactables = [];
 
     setupHiResCamera(this);
 
@@ -81,7 +84,10 @@ export class GameScene extends Phaser.Scene {
       const shelf = new Shelf(this, pos.gx, pos.gy, product);
       // Klickbar ruta framför hyllan (mot golvet), inte hyllan själv.
       const marker = new InteractionMarker(this, pos.gx, pos.gy + 1);
-      marker.on('pointerdown', () => this.onShelfClicked(shelf));
+      const act = () => this.onShelfClicked(shelf);
+      marker.on('pointerdown', act);
+      // Klickzon mellan hyllan och rutan – klick på hyllan, rutan eller nära räcker.
+      this.interactables.push({ gx: pos.gx, gy: pos.gy + 0.5, act });
       this.shelves.set(product.id, shelf);
     }
 
@@ -92,7 +98,13 @@ export class GameScene extends Phaser.Scene {
       this.checkout.gridY,
       0x64b5f6,
     );
-    checkoutMarker.on('pointerdown', () => this.onCheckoutClicked());
+    const checkoutAct = () => this.onCheckoutClicked();
+    checkoutMarker.on('pointerdown', checkoutAct);
+    this.interactables.push({
+      gx: this.checkout.gridX + 0.5,
+      gy: this.checkout.gridY,
+      act: checkoutAct,
+    });
 
     if (this.state.isParcelAgent) {
       this.parcelDesk = new ParcelDesk(this, 8, 3, BALANCE.parcelQueueMax);
@@ -102,7 +114,13 @@ export class GameScene extends Phaser.Scene {
         this.parcelDesk.gridY,
         0x64b5f6,
       );
-      parcelMarker.on('pointerdown', () => this.onParcelDeskClicked());
+      const parcelAct = () => this.onParcelDeskClicked();
+      parcelMarker.on('pointerdown', parcelAct);
+      this.interactables.push({
+        gx: this.parcelDesk.gridX + 0.5,
+        gy: this.parcelDesk.gridY,
+        act: parcelAct,
+      });
     }
 
     // Bygg navigeringsrutnätet: hyllor, kassa och paketdisk blockeras så att
@@ -146,18 +164,43 @@ export class GameScene extends Phaser.Scene {
 
     this.showPendingHint();
 
-    // Klick på golvet (inte på en station) → gå dit.
+    // Klick på golvet → sköt närmaste station om klicket är i eller nära den,
+    // annars gå till punkten.
     this.input.on(
       'pointerdown',
       (pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
         if (over.length > 0) return;
         const { gx, gy } = screenToIso(pointer.worldX, pointer.worldY);
+        const station = this.stationAt(gx, gy);
+        if (station) {
+          station.act();
+          return;
+        }
         const cgx = Phaser.Math.Clamp(gx, 0.3, GRID_W - 0.3);
         const cgy = Phaser.Math.Clamp(gy, 0.3, GRID_H - 0.3);
         const target = isoToScreen(cgx, cgy);
         this.manager.walkTo(target.x, target.y);
       },
     );
+  }
+
+  /**
+   * Närmaste stationsklickzon inom räckhåll för en punkt (rutnätskoordinater),
+   * eller undefined om klicket är för långt från alla stationer. Generös radie
+   * så att klick på hyllan/kassan, rutan framför eller strax intill räknas.
+   */
+  private stationAt(gx: number, gy: number): { act: () => void } | undefined {
+    const reach = 1.15;
+    let best: { gx: number; gy: number; act: () => void } | undefined;
+    let bestDist = reach;
+    for (const it of this.interactables) {
+      const d = Math.hypot(gx - it.gx, gy - it.gy);
+      if (d <= bestDist) {
+        bestDist = d;
+        best = it;
+      }
+    }
+    return best;
   }
 
   update(time: number, delta: number): void {
