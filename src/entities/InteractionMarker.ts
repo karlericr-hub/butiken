@@ -28,10 +28,13 @@ export class InteractionMarker extends Phaser.GameObjects.Container {
 
     // Golvdekal – ligger under figurerna men ovanför golvplattorna.
     this.setDepth(-900);
-    this.setSize(TILE_W, TILE_H);
-    // Generös träffyta – barnvänligt att inte behöva pricka exakt.
+    // Extra generös träffyta – klick i eller nära rutan räknas, så man
+    // slipper pricka exakt mitt i. Figuren går sedan till rätt ställe.
+    const hitW = TILE_W + 48;
+    const hitH = TILE_H + 44;
+    this.setSize(hitW, hitH);
     this.setInteractive(
-      new Phaser.Geom.Rectangle(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H),
+      new Phaser.Geom.Rectangle(-hitW / 2, -hitH / 2, hitW, hitH),
       Phaser.Geom.Rectangle.Contains,
     );
     if (this.input) this.input.cursor = 'pointer';
