@@ -27,6 +27,16 @@ npm run preview  # kör det byggda spelet lokalt
 Allt spelinnehåll (varor, uppgraderingar, balanssiffror) ligger i
 `src/config/` och kan justeras utan att röra spellogiken.
 
+## Grafik
+
+Figurer, möbler och props är CC0-assets från [Kenney](https://kenney.nl)
+(Toon Characters 1, Furniture Kit, Jumper Pack). Bilderna ligger i
+`public/assets/kenney/` och kopplas till spelets texturnycklar via
+manifestet `src/config/assets.ts`. Figurerna animeras med gångramar. Ett
+fåtal enkla texturer (skugga, humör-smileys, leveranspall) genereras
+fortfarande programmatiskt i `src/scenes/BootScene.ts`. Se
+`public/assets/kenney/CREDITS.md` för fullständig attribution.
+
 ## Deploy
 
 GitHub Actions bygger och deployar `dist/` till GitHub Pages vid push

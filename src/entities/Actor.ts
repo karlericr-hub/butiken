@@ -1,6 +1,14 @@
 import Phaser from 'phaser';
 import type { NavGrid } from '../systems/NavGrid';
 import { INV_SCALE } from '../utils/scale';
+import { applySpec } from '../utils/sprites';
+import {
+  FIGURE_CHARACTER,
+  FIGURE_SPEC,
+  figureIdleTexture,
+  walkAnimKey,
+  type CharacterName,
+} from '../config/assets';
 
 /** Sprite som går till en punkt – runt hinder via NavGrid – och säger till när den är framme. */
 export class Actor extends Phaser.GameObjects.Sprite {
@@ -10,17 +18,20 @@ export class Actor extends Phaser.GameObjects.Sprite {
   private onArrive?: () => void;
   private path: { x: number; y: number }[] = [];
   private shadow: Phaser.GameObjects.Sprite;
+  private readonly character: CharacterName;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
-    texture: string,
+    /** Figurnyckel (mgr, cashier, cust3, ...) – slås upp till en Toon-figur. */
+    figureKey: string,
     private speed: number,
   ) {
-    super(scene, x, y, texture);
-    this.setOrigin(0.5, 0.95);
-    this.setScale(INV_SCALE);
+    const character = FIGURE_CHARACTER[figureKey] ?? 'malePerson';
+    super(scene, x, y, figureIdleTexture(character));
+    this.character = character;
+    applySpec(this, FIGURE_SPEC);
     this.shadow = scene.add.sprite(x, y, 'shadow').setAlpha(0.22).setScale(INV_SCALE);
     scene.add.existing(this);
   }
@@ -70,15 +81,26 @@ export class Actor extends Phaser.GameObjects.Sprite {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, this.targetX, this.targetY);
         this.x += Math.cos(angle) * step;
         this.y += Math.sin(angle) * step;
+        // Vänd figuren efter rörelsens riktning i skärm-x-led.
+        if (Math.cos(angle) < -0.05) this.setFlipX(true);
+        else if (Math.cos(angle) > 0.05) this.setFlipX(false);
       }
-      // Lätt gung i steget medan figuren går.
-      this.setScale(INV_SCALE, INV_SCALE * (1 + Math.sin(time * 0.02) * 0.045));
-    } else if (this.scaleY !== INV_SCALE) {
-      this.setScale(INV_SCALE);
     }
+    this.updateAnimationState();
     this.setDepth(this.y);
     this.shadow.setPosition(this.x, this.y + 2);
     this.shadow.setDepth(this.y - 1);
+  }
+
+  /** Spelar gånganimation medan figuren rör sig, annars idle-bild. */
+  private updateAnimationState(): void {
+    const walk = walkAnimKey(this.character);
+    if (this.moving) {
+      if (this.anims.getName() !== walk || !this.anims.isPlaying) this.anims.play(walk, true);
+    } else if (this.anims.isPlaying) {
+      this.anims.stop();
+      this.setTexture(figureIdleTexture(this.character));
+    }
   }
 
   destroy(fromScene?: boolean): void {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { Product } from '../state/GameState';
 import { isoToScreen } from '../utils/iso';
-import { INV_SCALE } from '../utils/scale';
+import { applySprite } from '../utils/sprites';
 import { PRODUCT_COLORS } from '../config/products';
 import { sfx } from '../systems/Sfx';
 
@@ -31,13 +31,12 @@ export class Shelf extends Phaser.GameObjects.Container {
     this.gridY = gridY;
 
     const cube = scene.add.sprite(0, 0, 'shelfCube');
-    cube.setOrigin(0.5, 40 / 60);
-    cube.setScale(INV_SCALE);
+    applySprite(cube, 'shelfCube');
     this.add(cube);
 
     for (const [mx, my] of MINI_POSITIONS) {
       const mini = scene.add.sprite(mx, my, 'mini');
-      mini.setScale(INV_SCALE);
+      applySprite(mini, 'mini');
       mini.setTint(PRODUCT_COLORS[product.id] ?? 0xcccccc);
       mini.setVisible(false);
       this.add(mini);

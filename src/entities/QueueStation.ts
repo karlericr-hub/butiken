@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { isoToScreen } from '../utils/iso';
-import { INV_SCALE } from '../utils/scale';
+import { applySprite } from '../utils/sprites';
 import type { Customer } from './Customer';
 
 /** Gemensam bas för stationer med FIFO-kö (kassa, paketdisk). */
@@ -26,14 +26,12 @@ export abstract class QueueStation extends Phaser.GameObjects.Container {
   /** Disksprite, etikett och klickyta – anropas av subklasserna. */
   protected buildVisuals(tint: number, label: string, topTexture: string): void {
     const cube = this.scene.add.sprite(0, 0, 'cube');
-    cube.setOrigin(0.5, 40 / 56);
-    cube.setScale(INV_SCALE);
+    applySprite(cube, 'cube');
     cube.setTint(tint);
     this.add(cube);
 
     const top = this.scene.add.sprite(0, -30, topTexture);
-    top.setOrigin(0.5, 1);
-    top.setScale(INV_SCALE);
+    applySprite(top, topTexture);
     this.add(top);
 
     const text = this.scene.add

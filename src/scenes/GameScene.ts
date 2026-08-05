@@ -4,6 +4,7 @@ import { PRODUCTS } from '../config/products';
 import { BALANCE } from '../config/balance';
 import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
 import { INV_SCALE, VIEW_W, setupHiResCamera } from '../utils/scale';
+import { applySprite } from '../utils/sprites';
 import { Manager } from '../entities/Manager';
 import { Shelf } from '../entities/Shelf';
 import { Checkout } from '../entities/Checkout';
@@ -367,25 +368,25 @@ export class GameScene extends Phaser.Scene {
     for (let gx = 0; gx < GRID_W; gx++) {
       for (let gy = 0; gy < GRID_H; gy++) {
         const pos = isoToScreen(gx, gy);
-        const tile = this.add.sprite(pos.x, pos.y + 16, 'tile');
-        tile.setOrigin(0.5, 0.5);
-        tile.setScale(INV_SCALE);
+        const tile = this.add.sprite(pos.x, pos.y, 'tile');
+        applySprite(tile, 'tile');
         const base = (gx + gy) % 2 === 0 ? 0xf0e7d3 : 0xe5dbc2;
         // Liten slumpvariation gör golvet levande utan att bli plottrigt.
         tile.setTint(
           Phaser.Display.Color.ValueToColor(base).darken(Phaser.Math.Between(0, 3)).color,
         );
-        tile.setDepth(-1000);
+        // Golvplattorna har tjocklek; sortera dem så närmare rader ritas överst
+        // men håll dem under allt annat (väggar ligger på -960).
+        tile.setDepth(-1000 + (gx + gy));
       }
     }
     // Dörrmatta där kunderna kommer in
     for (const gy of [8, 9]) {
       const pos = isoToScreen(0, gy);
-      const mat = this.add.sprite(pos.x, pos.y + 16, 'tile');
-      mat.setOrigin(0.5, 0.5);
-      mat.setScale(INV_SCALE);
+      const mat = this.add.sprite(pos.x, pos.y, 'tile');
+      applySprite(mat, 'tile');
       mat.setTint(0x9c786c);
-      mat.setDepth(-999);
+      mat.setDepth(-1000 + (0 + gy) + 0.5);
     }
   }
 
@@ -470,7 +471,7 @@ export class GameScene extends Phaser.Scene {
     ];
     for (const [gx, gy] of spots) {
       const p = isoToScreen(gx, gy);
-      const plant = this.add.sprite(p.x, p.y, 'plant').setOrigin(0.5, 1).setScale(INV_SCALE);
+      const plant = applySprite(this.add.sprite(p.x, p.y, 'plant'), 'plant');
       plant.setDepth(p.y);
       const shadow = this.add.sprite(p.x, p.y + 1, 'shadow').setAlpha(0.2).setScale(INV_SCALE);
       shadow.setDepth(p.y - 1);
@@ -497,7 +498,8 @@ export class GameScene extends Phaser.Scene {
       angle: { min: 230, max: 310 },
       gravityY: 520,
       lifespan: 650,
-      scale: { start: INV_SCALE, end: 0.4 * INV_SCALE },
+      // Myntbilden är ~61 px; visa den runt 12 designpixlar och krymp mot slutet.
+      scale: { start: 12 / 61, end: 5 / 61 },
       emitting: false,
     });
     particles.setDepth(9600);
