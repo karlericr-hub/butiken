@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { NavGrid } from '../systems/NavGrid';
+import { INV_SCALE } from '../utils/scale';
 
 /** Sprite som går till en punkt – runt hinder via NavGrid – och säger till när den är framme. */
 export class Actor extends Phaser.GameObjects.Sprite {
@@ -19,7 +20,8 @@ export class Actor extends Phaser.GameObjects.Sprite {
   ) {
     super(scene, x, y, texture);
     this.setOrigin(0.5, 0.95);
-    this.shadow = scene.add.sprite(x, y, 'shadow').setAlpha(0.22);
+    this.setScale(INV_SCALE);
+    this.shadow = scene.add.sprite(x, y, 'shadow').setAlpha(0.22).setScale(INV_SCALE);
     scene.add.existing(this);
   }
 
@@ -70,9 +72,9 @@ export class Actor extends Phaser.GameObjects.Sprite {
         this.y += Math.sin(angle) * step;
       }
       // Lätt gung i steget medan figuren går.
-      this.setScale(1, 1 + Math.sin(time * 0.02) * 0.045);
-    } else if (this.scaleY !== 1) {
-      this.setScale(1, 1);
+      this.setScale(INV_SCALE, INV_SCALE * (1 + Math.sin(time * 0.02) * 0.045));
+    } else if (this.scaleY !== INV_SCALE) {
+      this.setScale(INV_SCALE);
     }
     this.setDepth(this.y);
     this.shadow.setPosition(this.x, this.y + 2);

@@ -32,6 +32,8 @@ export const BALANCE = {
 
   /** Effekter av uppgraderingar. */
   cardPayTimeMultiplier: 0.55,
+  /** Daglig hyra för kortterminalen (dras varje kväll när den ägs). */
+  cardTerminalDailyFee: 20,
   shelfCapacityMultiplier: 1.5,
   betterShelfRestockMultiplier: 0.6,
   adSpawnBoost: 1.6,

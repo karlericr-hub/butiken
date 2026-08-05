@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem';
 import { sfx } from '../systems/Sfx';
+import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -8,8 +9,9 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    setupHiResCamera(this);
+    const W = VIEW_W;
+    const H = VIEW_H;
 
     this.add.rectangle(0, 0, W, H, 0xaee3f2).setOrigin(0, 0);
     this.drawSun(W - 110, 90);

@@ -5,6 +5,7 @@ import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { sfx } from '../systems/Sfx';
 import { SaveSystem } from '../systems/SaveSystem';
+import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -31,22 +32,28 @@ export class EveningScene extends Phaser.Scene {
   private wagesToday = 0;
   /** Stänger ett öppet inmatningsfält för beställning (om något är öppet). */
   private activeInputCleanup?: (apply: boolean) => void;
+  private cardTerminalFeeToday = 0;
 
   constructor() {
     super('Evening');
   }
 
   create(): void {
+    setupHiResCamera(this);
     this.state = this.registry.get('gameState') as GameState;
     this.upgradeSystem = new UpgradeSystem(this.state);
     this.order = {};
     this.orderTexts.clear();
     this.upgradeRefreshers = [];
 
-    // Betala hyra och löner för dagen.
+    // Betala hyra, löner och terminalhyra för dagen.
     this.wagesToday = this.state.staff.reduce((sum, m) => sum + m.dailyWage, 0);
-    this.state.money -= BALANCE.rentPerDay + this.wagesToday;
-    this.state.stats.costsToday += BALANCE.rentPerDay + this.wagesToday;
+    this.cardTerminalFeeToday = this.state.upgrades.includes('kortterminal')
+      ? BALANCE.cardTerminalDailyFee
+      : 0;
+    const fixedCosts = BALANCE.rentPerDay + this.wagesToday + this.cardTerminalFeeToday;
+    this.state.money -= fixedCosts;
+    this.state.stats.costsToday += fixedCosts;
 
     // Konkursräkning: negativt saldo på kvällen ökar skuldräknaren.
     if (this.state.money < 0) {
@@ -59,8 +66,8 @@ export class EveningScene extends Phaser.Scene {
       return;
     }
 
-    const W = this.scale.width;
-    this.add.rectangle(0, 0, W, this.scale.height, 0xffecc7).setOrigin(0, 0);
+    const W = VIEW_W;
+    this.add.rectangle(0, 0, W, VIEW_H, 0xffecc7).setOrigin(0, 0);
 
     // Kortpaneler bakom de tre kolumnerna
     const cards = this.add.graphics();
@@ -100,7 +107,8 @@ export class EveningScene extends Phaser.Scene {
   private buildSummary(x: number, y: number): void {
     const s = this.state.stats;
     const profit = s.revenueToday - s.costsToday;
-    const purchases = s.costsToday - BALANCE.rentPerDay - this.wagesToday;
+    const purchases =
+      s.costsToday - BALANCE.rentPerDay - this.wagesToday - this.cardTerminalFeeToday;
 
     this.add.text(x, y, 'Dagens resultat', {
       fontFamily: '"Baloo 2", sans-serif',
@@ -114,6 +122,9 @@ export class EveningScene extends Phaser.Scene {
       ['Varuinköp', `-${purchases} kr`, '#c62828'],
       ['Hyra', `-${BALANCE.rentPerDay} kr`, '#c62828'],
     ];
+    if (this.cardTerminalFeeToday > 0) {
+      rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, '#c62828']);
+    }
     if (this.wagesToday > 0) {
       rows.push(['Löner', `-${this.wagesToday} kr`, '#c62828']);
     }
