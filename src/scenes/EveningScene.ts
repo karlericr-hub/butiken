@@ -29,6 +29,8 @@ export class EveningScene extends Phaser.Scene {
   private upgradeRefreshers: (() => void)[] = [];
   private orderContainer?: Phaser.GameObjects.Container;
   private wagesToday = 0;
+  /** Stänger ett öppet inmatningsfält för beställning (om något är öppet). */
+  private activeInputCleanup?: (apply: boolean) => void;
 
   constructor() {
     super('Evening');
@@ -90,6 +92,9 @@ export class EveningScene extends Phaser.Scene {
     this.makeButton(800, 596, 260, 46, `Starta dag ${this.state.day + 1} ▶`, () =>
       this.startNextDay(),
     );
+
+    // Ta bort ett eventuellt öppet inmatningsfält när scenen lämnas.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.activeInputCleanup?.(false));
   }
 
   private buildSummary(x: number, y: number): void {
@@ -230,7 +235,7 @@ export class EveningScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
       // Klicka på siffran för att skriva in antalet direkt.
-      qty.on('pointerdown', () => this.promptOrder(p.id));
+      qty.on('pointerdown', () => this.editOrder(p.id, qty));
       this.orderTexts.set(p.id, qty);
       c.add(qty);
       c.add(this.makeButton(x + 272, ry + 12, 32, 32, '+', () => this.changeOrder(p.id, 1)));
@@ -261,18 +266,77 @@ export class EveningScene extends Phaser.Scene {
     this.setOrder(productId, (this.order[productId] ?? 0) + delta);
   }
 
-  /** Låter spelaren skriva in ett exakt antal att beställa. */
-  private promptOrder(productId: string): void {
-    const product = this.state.products.find((p) => p.id === productId);
-    if (!product) return;
-    const answer = window.prompt(
-      `Hur många ${product.name} vill du beställa?`,
-      String(this.order[productId] ?? 0),
-    );
-    if (answer === null) return;
-    const value = parseInt(answer.trim(), 10);
-    if (Number.isNaN(value)) return;
-    this.setOrder(productId, value);
+  /**
+   * Lägger ett riktigt HTML-inmatningsfält ovanpå siffran så att spelaren kan
+   * trycka på den och skriva antalet direkt (canvasen skalas med FIT).
+   */
+  private editOrder(productId: string, qtyText: Phaser.GameObjects.Text): void {
+    this.activeInputCleanup?.(false);
+
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / this.scale.width;
+    const scaleY = rect.height / this.scale.height;
+    const boxW = 46;
+    const boxH = 30;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.inputMode = 'numeric';
+    input.value = String(this.order[productId] ?? 0);
+    Object.assign(input.style, {
+      position: 'fixed',
+      left: `${rect.left + (qtyText.x - boxW / 2) * scaleX}px`,
+      top: `${rect.top + (qtyText.y - boxH / 2) * scaleY}px`,
+      width: `${boxW * scaleX}px`,
+      height: `${boxH * scaleY}px`,
+      margin: '0',
+      padding: '0',
+      boxSizing: 'border-box',
+      textAlign: 'center',
+      fontFamily: '"Baloo 2", sans-serif',
+      fontSize: `${18 * scaleY}px`,
+      fontWeight: '700',
+      color: '#4e342e',
+      background: '#fffdf6',
+      border: '2px solid #ffa726',
+      borderRadius: '6px',
+      zIndex: '1000',
+    } as Partial<CSSStyleDeclaration>);
+
+    qtyText.setVisible(false);
+
+    let done = false;
+    const finish = (apply: boolean): void => {
+      if (done) return;
+      done = true;
+      input.removeEventListener('blur', onBlur);
+      if (apply) {
+        const value = parseInt(input.value, 10);
+        if (!Number.isNaN(value)) this.setOrder(productId, value);
+      }
+      input.remove();
+      qtyText.setVisible(true);
+      if (this.activeInputCleanup === finish) this.activeInputCleanup = undefined;
+    };
+    const onBlur = (): void => finish(true);
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', onBlur);
+
+    this.activeInputCleanup = finish;
+    document.body.appendChild(input);
+    input.focus();
+    input.select();
   }
 
   /** Sätter beställt antal och håller det inom saldot och ≥ 0. */
