@@ -25,6 +25,10 @@ export type Mood = 'green' | 'yellow' | 'orange' | 'red';
  */
 const MOOD_NAMES: Mood[] = ['green', 'yellow', 'orange', 'red'];
 
+/** Mindre smiley, placerad ovanför huvudet så den inte ligger på gubben. */
+const MOOD_FACE_SCALE = 0.62;
+const MOOD_FACE_OFFSET_Y = 56;
+
 export class Customer extends Actor {
   state: CustomerState = 'shopping';
   readonly basket: Product[] = [];
@@ -171,8 +175,9 @@ export class Customer extends Actor {
 
   private showMoodFace(): void {
     this.moodFace = this.scene.add
-      .sprite(this.x, this.y - 40, `mood${this.moodLevel}`)
-      .setOrigin(0.5);
+      .sprite(this.x, this.y - MOOD_FACE_OFFSET_Y, `mood${this.moodLevel}`)
+      .setOrigin(0.5)
+      .setScale(MOOD_FACE_SCALE);
   }
 
   private hideMoodFace(): void {
@@ -211,7 +216,7 @@ export class Customer extends Actor {
     this.mood = MOOD_NAMES[this.moodLevel];
     if (this.moodFace) {
       this.moodFace.setTexture(`mood${this.moodLevel}`);
-      this.moodFace.setPosition(this.x, this.y - 40);
+      this.moodFace.setPosition(this.x, this.y - MOOD_FACE_OFFSET_Y);
       this.moodFace.setDepth(this.depth + 1);
     }
   }
