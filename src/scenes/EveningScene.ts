@@ -286,28 +286,35 @@ export class EveningScene extends Phaser.Scene {
 
     const canvas = this.game.canvas;
     const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width / this.scale.width;
-    const scaleY = rect.height / this.scale.height;
-    const boxW = 46;
-    const boxH = 30;
+    // Duken visar hela designytan (VIEW_W×VIEW_H), så designkoordinater mappas
+    // mot dukens visade storlek – inte mot den superskalade renderupplösningen.
+    const scaleX = rect.width / VIEW_W;
+    const scaleY = rect.height / VIEW_H;
+    // Minst 16px teckenstorlek – annars zoomar mobilwebbläsare in i fältet och
+    // rutan hoppar ur läge. Rutan dimensioneras utifrån den valda storleken.
+    const fontPx = Math.max(16, Math.round(18 * scaleY));
+    const w = Math.max(48, Math.round(46 * scaleX));
+    const h = Math.max(fontPx + 12, Math.round(30 * scaleY));
+    // Centrera rutan över siffran.
+    const cx = rect.left + qtyText.x * scaleX;
+    const cy = rect.top + qtyText.y * scaleY;
 
     const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
+    input.type = 'text';
     input.inputMode = 'numeric';
     input.value = String(this.order[productId] ?? 0);
     Object.assign(input.style, {
       position: 'fixed',
-      left: `${rect.left + (qtyText.x - boxW / 2) * scaleX}px`,
-      top: `${rect.top + (qtyText.y - boxH / 2) * scaleY}px`,
-      width: `${boxW * scaleX}px`,
-      height: `${boxH * scaleY}px`,
+      left: `${Math.round(cx - w / 2)}px`,
+      top: `${Math.round(cy - h / 2)}px`,
+      width: `${w}px`,
+      height: `${h}px`,
       margin: '0',
       padding: '0',
       boxSizing: 'border-box',
       textAlign: 'center',
       fontFamily: '"Baloo 2", sans-serif',
-      fontSize: `${18 * scaleY}px`,
+      fontSize: `${fontPx}px`,
       fontWeight: '700',
       color: '#4e342e',
       background: '#fffdf6',
@@ -323,6 +330,7 @@ export class EveningScene extends Phaser.Scene {
       if (done) return;
       done = true;
       input.removeEventListener('blur', onBlur);
+      document.removeEventListener('pointerdown', onOutside, true);
       if (apply) {
         const value = parseInt(input.value, 10);
         if (!Number.isNaN(value)) this.setOrder(productId, value);
@@ -332,6 +340,11 @@ export class EveningScene extends Phaser.Scene {
       if (this.activeInputCleanup === finish) this.activeInputCleanup = undefined;
     };
     const onBlur = (): void => finish(true);
+    // Backstop: att trycka någon annanstans (t.ex. på canvasen) stänger rutan,
+    // även när canvasen inte tar emot fokus och blur därför inte utlöses.
+    const onOutside = (e: PointerEvent): void => {
+      if (e.target !== input) finish(true);
+    };
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -348,6 +361,10 @@ export class EveningScene extends Phaser.Scene {
     document.body.appendChild(input);
     input.focus();
     input.select();
+    // Lägg till lyssnaren efter aktuell klickhändelse så den inte stänger direkt.
+    setTimeout(() => {
+      if (!done) document.addEventListener('pointerdown', onOutside, true);
+    }, 0);
   }
 
   /** Sätter beställt antal och håller det inom saldot och ≥ 0. */
