@@ -40,18 +40,10 @@ export class InteractionMarker extends Phaser.GameObjects.Container {
     g.strokePath();
     this.add(g);
 
-    // Golvdekal – ligger under figurerna men ovanför golvplattorna.
+    // Golvdekal – ligger under figurerna men ovanför golvplattorna. Rutan är
+    // rent visuell; själva klicket hanteras av scenens klickzon (stationAt),
+    // som alltid väljer närmaste station så att man inte råkar träffa fel.
     this.setDepth(DEPTH.marker);
-    // Extra generös träffyta – klick i eller nära rutan räknas, så man
-    // slipper pricka exakt mitt i. Figuren går sedan till rätt ställe.
-    const hitW = TILE_W + 48;
-    const hitH = TILE_H + 44;
-    this.setSize(hitW, hitH);
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(-hitW / 2, -hitH / 2, hitW, hitH),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    if (this.input) this.input.cursor = 'pointer';
 
     // Sakta pulsering så att rutan syns som klickbar.
     scene.tweens.add({

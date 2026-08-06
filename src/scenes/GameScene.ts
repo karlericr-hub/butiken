@@ -96,44 +96,28 @@ export class GameScene extends Phaser.Scene {
       const pos = SHELF_POSITIONS[product.id];
       if (!pos || !isProductUnlocked(this.state, product)) continue;
       const shelf = new Shelf(this, pos.gx, pos.gy, product);
-      // Klickbar ruta framför hyllan (mot golvet), inte hyllan själv.
-      const marker = new InteractionMarker(this, pos.gx, pos.gy + 1);
-      const act = () => this.onShelfClicked(shelf);
-      marker.on('pointerdown', act);
+      // Markeringsruta framför hyllan (rent visuell) + klickzon.
+      new InteractionMarker(this, pos.gx, pos.gy + 1);
       // Klickzon mellan hyllan och rutan – klick på hyllan, rutan eller nära räcker.
-      this.interactables.push({ gx: pos.gx, gy: pos.gy + 0.5, act });
+      this.interactables.push({ gx: pos.gx, gy: pos.gy + 0.5, act: () => this.onShelfClicked(shelf) });
       this.shelves.set(product.id, shelf);
     }
 
     this.checkout = new Checkout(this, 7, 6, this.upgrades.maxQueueLength);
-    const checkoutMarker = new InteractionMarker(
-      this,
-      this.checkout.gridX + 1,
-      this.checkout.gridY,
-      0x64b5f6,
-    );
-    const checkoutAct = () => this.onCheckoutClicked();
-    checkoutMarker.on('pointerdown', checkoutAct);
+    new InteractionMarker(this, this.checkout.gridX + 1, this.checkout.gridY, 0x64b5f6);
     this.interactables.push({
       gx: this.checkout.gridX + 0.5,
       gy: this.checkout.gridY,
-      act: checkoutAct,
+      act: () => this.onCheckoutClicked(),
     });
 
     if (this.state.isParcelAgent) {
       this.parcelDesk = new ParcelDesk(this, 8, 3, BALANCE.parcelQueueMax);
-      const parcelMarker = new InteractionMarker(
-        this,
-        this.parcelDesk.gridX + 1,
-        this.parcelDesk.gridY,
-        0x64b5f6,
-      );
-      const parcelAct = () => this.onParcelDeskClicked();
-      parcelMarker.on('pointerdown', parcelAct);
+      new InteractionMarker(this, this.parcelDesk.gridX + 1, this.parcelDesk.gridY, 0x64b5f6);
       this.interactables.push({
         gx: this.parcelDesk.gridX + 0.5,
         gy: this.parcelDesk.gridY,
-        act: parcelAct,
+        act: () => this.onParcelDeskClicked(),
       });
     }
 
