@@ -2,7 +2,14 @@
 <html lang="sv">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#9fd6e8" />
     <title>Butiken</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,7 +24,22 @@
         padding: 0;
         background: #9fd6e8;
         height: 100%;
+        width: 100%;
         overflow: hidden;
+        overscroll-behavior: none;
+        /* Stäng av webbläsarens egna touchgester (zoom, panorering,
+           dra-för-att-uppdatera) så att spelet får alla tryck. */
+        touch-action: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-touch-callout: none;
+      }
+      body {
+        /* Lås ytan så inget kan scrollas bakom spelet på mobil. */
+        position: fixed;
+        inset: 0;
       }
       #game {
         width: 100%;
@@ -26,10 +48,73 @@
         align-items: center;
         justify-content: center;
       }
+      /* Textfält (t.ex. beställningsantal) ska få markera och skriva. */
+      #game input,
+      #game textarea {
+        -webkit-user-select: text;
+        user-select: text;
+        touch-action: auto;
+      }
+
+      /* "Vrid telefonen"-överlägg: visas bara på små skärmar i porträtt.
+         Spelet är designat i landskap (960×640) och blir därför pyttelitet
+         stående – be spelaren vrida enheten i stället. */
+      #rotate-hint {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+        box-sizing: border-box;
+        text-align: center;
+        background: #9fd6e8;
+        color: #3a4a52;
+        font-family: 'Baloo 2', sans-serif;
+      }
+      #rotate-hint .phone {
+        width: 66px;
+        height: 108px;
+        border: 6px solid #3a4a52;
+        border-radius: 14px;
+        animation: rotate-phone 2s ease-in-out infinite;
+      }
+      #rotate-hint p {
+        margin: 0;
+        font-size: clamp(18px, 5.5vw, 26px);
+        font-weight: 700;
+        max-width: 18em;
+        line-height: 1.35;
+      }
+      @keyframes rotate-phone {
+        0%,
+        30% {
+          transform: rotate(0deg);
+        }
+        60%,
+        100% {
+          transform: rotate(-90deg);
+        }
+      }
+      /* Porträtt på en telefonliten skärm → visa hinten och dölj spelet.
+         Höjdgränsen ser till att liggande men låga fönster (desktop) inte
+         råkar trigga den. */
+      @media (max-width: 900px) and (orientation: portrait) {
+        #rotate-hint {
+          display: flex;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate-hint" aria-hidden="true">
+      <div class="phone"></div>
+      <p>Vrid telefonen till liggande läge för att spela 🛒</p>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
