@@ -17,10 +17,12 @@ export const VIEW_H = 640;
  */
 function computeRenderScale(): number {
   const dpr = window.devicePixelRatio || 1;
-  const fit = Math.min(
-    window.innerWidth / VIEW_W,
-    window.innerHeight / VIEW_H,
-  );
+  // Spelet visas alltid i landskap (mobilen ombeds vrida sig), så vi räknar
+  // mot landskapspassformen oavsett hur skärmen råkar vara vänd vid start.
+  // Annars blir en telefon som laddas i porträtt onödigt oskarp när den vrids.
+  const longSide = Math.max(window.innerWidth, window.innerHeight);
+  const shortSide = Math.min(window.innerWidth, window.innerHeight);
+  const fit = Math.min(longSide / VIEW_W, shortSide / VIEW_H);
   return Phaser.Math.Clamp(Math.ceil(fit * dpr), 2, 4);
 }
 
