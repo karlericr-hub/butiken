@@ -16,6 +16,11 @@ export class TimeSystem {
     return Math.max(0, this.elapsedMs - BALANCE.dayDurationMs);
   }
 
+  /** Hur långt dagen gått, 0 vid öppning och 1 vid stängning. Styr dagsljuset. */
+  get progress(): number {
+    return Math.min(1, this.elapsedMs / BALANCE.dayDurationMs);
+  }
+
   /** Öppettiden mappas till en klocka, t.ex. 08:00–20:00. */
   get clockText(): string {
     const fraction = this.elapsedMs / BALANCE.dayDurationMs;
