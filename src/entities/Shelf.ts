@@ -4,6 +4,7 @@ import { isoToScreen } from '../utils/iso';
 import { INV_SCALE } from '../utils/scale';
 import { PRODUCT_COLORS } from '../config/products';
 import { sfx } from '../systems/Sfx';
+import { PALETTE, TEXT, css, darken, mix } from '../config/theme';
 
 /** Positioner för varulådorna på hylltoppen (lokala koordinater). */
 const MINI_POSITIONS: [number, number][] = [
@@ -22,6 +23,7 @@ export class Shelf extends Phaser.GameObjects.Container {
   private minis: Phaser.GameObjects.Sprite[] = [];
   private emptyAlert?: Phaser.GameObjects.Text;
   private alertTween?: Phaser.Tweens.Tween;
+  private cube!: Phaser.GameObjects.Sprite;
 
   constructor(scene: Phaser.Scene, gridX: number, gridY: number, product: Product) {
     const pos = isoToScreen(gridX, gridY);
@@ -30,26 +32,31 @@ export class Shelf extends Phaser.GameObjects.Container {
     this.gridX = gridX;
     this.gridY = gridY;
 
+    // Mjuk kontaktskugga så att hyllan står på golvet i stället för att sväva.
+    const shadow = scene.add.sprite(0, 16, 'shadowM');
+    shadow.setScale(INV_SCALE * 1.2, INV_SCALE * 1.1);
+    shadow.setAlpha(0.3);
+    this.add(shadow);
+
     const cube = scene.add.sprite(0, 0, 'shelfCube');
     cube.setOrigin(0.5, 40 / 60);
     cube.setScale(INV_SCALE);
     this.add(cube);
+    this.cube = cube;
 
-    for (const [mx, my] of MINI_POSITIONS) {
+    const tint = PRODUCT_COLORS[product.id] ?? 0xcccccc;
+    MINI_POSITIONS.forEach(([mx, my], i) => {
       const mini = scene.add.sprite(mx, my, 'mini');
       mini.setScale(INV_SCALE);
-      mini.setTint(PRODUCT_COLORS[product.id] ?? 0xcccccc);
+      // Lådorna längre bak är en aning mörkare – ger djup i stapeln.
+      mini.setTint(i >= 3 ? darken(tint, 8) : tint);
       mini.setVisible(false);
       this.add(mini);
       this.minis.push(mini);
-    }
+    });
 
     const label = scene.add
-      .text(0, -52, product.name, {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '12px',
-        color: '#4a3f35',
-      })
+      .text(0, -54, product.name, TEXT.small({ fontSize: '12px', color: css(PALETTE.text.strong) }))
       .setOrigin(0.5, 1);
     this.add(label);
 
@@ -81,7 +88,10 @@ export class Shelf extends Phaser.GameObjects.Container {
     if (this.product.currentStock <= 0) return false;
     this.product.currentStock--;
     this.refreshVisuals();
-    if (this.product.currentStock === 0) sfx.alert();
+    if (this.product.currentStock === 0) {
+      sfx.alert();
+      this.pulseEmpty();
+    }
     return true;
   }
 
@@ -98,15 +108,44 @@ export class Shelf extends Phaser.GameObjects.Container {
     return this.product.shelfCapacity - this.product.currentStock;
   }
 
+  /** Liten glädjeskutt när hyllan fyllts på. */
+  celebrate(): void {
+    this.scene.tweens.add({
+      targets: this.cube,
+      scaleY: INV_SCALE * 1.12,
+      duration: 130,
+      yoyo: true,
+      ease: 'Sine.easeOut',
+    });
+  }
+
+  /** Röd puls när sista varan plockats. */
+  private pulseEmpty(): void {
+    this.cube.setTint(mix(0xffffff, PALETTE.danger.light, 0.55));
+    this.scene.time.delayedCall(220, () => this.cube.clearTint());
+  }
+
   private refreshVisuals(): void {
     const ratio = this.product.currentStock / this.product.shelfCapacity;
 
-    const color = ratio > 0.5 ? 0x66bb6a : ratio > 0.2 ? 0xffb300 : 0xe53935;
+    const color =
+      ratio > 0.5
+        ? PALETTE.success.light
+        : ratio > 0.2
+          ? PALETTE.warning.base
+          : PALETTE.danger.base;
     this.bar.clear();
-    this.bar.fillStyle(0x3a3a3a, 0.85);
-    this.bar.fillRect(-21, -48, 42, 7);
-    this.bar.fillStyle(color, 1);
-    this.bar.fillRect(-20, -47, 40 * ratio, 5);
+    // Rundad mätare med ljus kant, matchar förloppsindikatorn i GameScene.
+    this.bar.fillStyle(PALETTE.metal.darker, 0.35);
+    this.bar.fillRoundedRect(-22, -50, 44, 9, 4.5);
+    this.bar.fillStyle(PALETTE.panel.card, 0.9);
+    this.bar.fillRoundedRect(-21, -49, 42, 7, 3.5);
+    if (ratio > 0.02) {
+      this.bar.fillStyle(color, 1);
+      this.bar.fillRoundedRect(-20, -48, 40 * ratio, 5, 2.5);
+      this.bar.fillStyle(0xffffff, 0.35);
+      this.bar.fillRoundedRect(-20, -48, 40 * ratio, 2, 1);
+    }
 
     const visibleMinis =
       this.product.currentStock > 0 ? Math.max(1, Math.ceil(ratio * this.minis.length)) : 0;
