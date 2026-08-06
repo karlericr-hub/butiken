@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { Actor } from './Actor';
 import { BALANCE } from '../config/balance';
 import { INV_SCALE } from '../utils/scale';
+import { PRODUCT_COLORS } from '../config/products';
 import type { Product } from '../state/GameState';
 import type { Shelf } from './Shelf';
 import type { QueueStation } from './QueueStation';
@@ -42,6 +43,7 @@ export class Customer extends Actor {
   private patienceTotalMs: number;
   private patienceLeftMs: number;
   private moodFace?: Phaser.GameObjects.Sprite;
+  private basketSprite?: Phaser.GameObjects.Sprite;
 
   constructor(
     scene: Phaser.Scene,
@@ -97,16 +99,41 @@ export class Customer extends Actor {
 
   private pickAt(shelf: Shelf): void {
     this.state = 'picking';
+    this.startReaching();
     this.scene.time.delayedCall(BALANCE.pickTimeMs, () => {
       if (!this.active) return;
+      this.stopReaching();
       if (shelf.takeOne()) {
         this.basket.push(shelf.product);
+        this.showBasket(PRODUCT_COLORS[shelf.product.id] ?? 0xcccccc);
       } else {
         // Tom hylla – varan saknas, humöret sjunker ett hack.
         this.missingCount++;
       }
       this.startNextTask();
     });
+  }
+
+  /**
+   * Kunden bär en korg så fort något plockats. Korgen färgas efter den senast
+   * plockade varan, så att man ser vad kunden har med sig till kassan.
+   */
+  private showBasket(tint: number): void {
+    if (!this.basketSprite) {
+      this.basketSprite = this.scene.add
+        .sprite(this.x, this.y, 'basket')
+        .setOrigin(0.5, 0.5)
+        .setScale(INV_SCALE);
+      // Liten puff när korgen dyker upp första gången.
+      this.basketSprite.setScale(0);
+      this.scene.tweens.add({
+        targets: this.basketSprite,
+        scale: INV_SCALE,
+        duration: 220,
+        ease: 'Back.easeOut',
+      });
+    }
+    this.basketSprite.setTint(tint);
   }
 
   private headForCheckout(): void {
@@ -220,10 +247,17 @@ export class Customer extends Actor {
       this.moodFace.setPosition(this.x, this.y - MOOD_FACE_OFFSET_Y);
       this.moodFace.setDepth(this.depth + 1);
     }
+    if (this.basketSprite) {
+      // Korgen hänger vid sidan om kunden, på den sida figuren vänder sig mot.
+      this.basketSprite.setPosition(this.x + (this.flipX ? -10 : 10), this.y - 13);
+      this.basketSprite.setDepth(this.depth + 1);
+    }
   }
 
   destroy(fromScene?: boolean): void {
     this.hideMoodFace();
+    this.basketSprite?.destroy();
+    this.basketSprite = undefined;
     super.destroy(fromScene);
   }
 }
