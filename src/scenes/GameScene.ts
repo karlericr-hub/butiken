@@ -42,6 +42,8 @@ export class GameScene extends Phaser.Scene {
   private delivery?: Delivery;
   private parcelDesk?: ParcelDesk;
   private closingHandled = false;
+  /** Sant så fort dagen avslutats, så att scenbytet bara startas en gång. */
+  private dayEnded = false;
   private customersSentHome = false;
   private paymentBusy = false;
   private parcelBusy = false;
@@ -63,6 +65,7 @@ export class GameScene extends Phaser.Scene {
     this.delivery = undefined;
     this.parcelDesk = undefined;
     this.closingHandled = false;
+    this.dayEnded = false;
     this.customersSentHome = false;
     this.paymentBusy = false;
     this.parcelBusy = false;
@@ -252,6 +255,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private endDay(): void {
+    // handleClosing() anropas varje bildruta. Utan spärr skulle uttoningen
+    // startas om om och om igen och därmed aldrig hinna bli klar.
+    if (this.dayEnded) return;
+    this.dayEnded = true;
+
     // Ej upplastad leverans bärs in i lagret automatiskt vid stängning.
     if (this.delivery) {
       this.storeDeliveryContents(this.delivery.contents);
@@ -412,21 +420,15 @@ export class GameScene extends Phaser.Scene {
       [790, 590, 0.85],
     ];
     for (const [x, y, s] of clouds) {
-      const g = this.add.graphics();
-      g.setDepth(DEPTH.clouds);
-      // Mjuk kantgloria först, tät kärna sedan – ger dunig kant.
-      g.fillStyle(0xffffff, 0.32);
-      g.fillCircle(x, y + 2, 24 * s);
-      g.fillCircle(x + 26 * s, y + 6 * s, 18 * s);
-      g.fillCircle(x - 25 * s, y + 7 * s, 16 * s);
-      g.fillStyle(0xffffff, 0.92);
-      g.fillCircle(x, y, 20 * s);
-      g.fillCircle(x + 24 * s, y + 4 * s, 15 * s);
-      g.fillCircle(x - 23 * s, y + 5 * s, 13 * s);
-      g.fillRoundedRect(x - 28 * s, y, 56 * s, 16 * s, 8 * s);
+      // Molnet är en färdig textur. Ritat som sju överlappande former per moln
+      // och bildruta kostade både tessellering och fyllnadsgrad i onödan.
+      const cloud = this.add
+        .image(x, y, 'cloud')
+        .setScale(INV_SCALE * s)
+        .setDepth(DEPTH.clouds);
       this.tweens.add({
-        targets: g,
-        x: 16,
+        targets: cloud,
+        x: x + 16,
         duration: 7000 + s * 4000,
         yoyo: true,
         repeat: -1,
@@ -435,37 +437,50 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawBirds();
+    this.drawGround();
+  }
 
-    // Mjuk grön tomt under butiken så den inte svävar i himlen.
+  /**
+   * Gräsplätten, gångvägen och kontaktskuggan under butiken.
+   *
+   * Bakas till en textur första gången scenen byggs. Som Graphics skulle de
+   * stora, överlappande ellipserna tessellieras och fyllas om varje bildruta;
+   * som textur blir det ett enda ritpass.
+   */
+  private drawGround(): void {
     const centre = isoToScreen(GRID_W / 2, GRID_H / 2);
-    const ground = this.add.graphics();
-    ground.setDepth(DEPTH.ground);
-    ground.fillStyle(PALETTE.grass.dark, 1);
-    ground.fillEllipse(centre.x, centre.y + 34, 880, 512);
-    ground.fillStyle(PALETTE.grass.base, 1);
-    ground.fillEllipse(centre.x, centre.y + 24, 852, 494);
-    ground.fillStyle(PALETTE.grass.light, 1);
-    ground.fillEllipse(centre.x, centre.y + 14, 800, 460);
-    // Grästuvor i kanten bryter upp den perfekta ellipsen.
-    ground.fillStyle(PALETTE.grass.base, 0.85);
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * Math.PI * 2;
-      const rx = 400 + Phaser.Math.Between(-10, 22);
-      const ry = 230 + Phaser.Math.Between(-8, 16);
-      ground.fillEllipse(
-        centre.x + Math.cos(a) * rx,
-        centre.y + 18 + Math.sin(a) * ry,
-        Phaser.Math.Between(26, 54),
-        Phaser.Math.Between(12, 22),
-      );
+    const KEY = 'bakedGround';
+    if (!this.textures.exists(KEY)) {
+      const g = this.make.graphics({}, false);
+      g.fillStyle(PALETTE.grass.dark, 1);
+      g.fillEllipse(centre.x, centre.y + 34, 880, 512);
+      g.fillStyle(PALETTE.grass.base, 1);
+      g.fillEllipse(centre.x, centre.y + 24, 852, 494);
+      g.fillStyle(PALETTE.grass.light, 1);
+      g.fillEllipse(centre.x, centre.y + 14, 800, 460);
+      // Grästuvor i kanten bryter upp den perfekta ellipsen.
+      g.fillStyle(PALETTE.grass.base, 0.85);
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2;
+        const rx = 400 + Phaser.Math.Between(-10, 22);
+        const ry = 230 + Phaser.Math.Between(-8, 16);
+        g.fillEllipse(
+          centre.x + Math.cos(a) * rx,
+          centre.y + 18 + Math.sin(a) * ry,
+          Phaser.Math.Between(26, 54),
+          Phaser.Math.Between(12, 22),
+        );
+      }
+      // Gångväg ut från entrén, så att butiken hör ihop med omvärlden.
+      g.fillStyle(mix(PALETTE.floor.b, PALETTE.grass.dark, 0.18), 1);
+      for (let i = 0; i < 7; i++) {
+        const p = isoToScreen(-1.1 - i * 0.85, 8.6 + i * 0.12);
+        g.fillEllipse(p.x, p.y + 16, 54 - i * 2.5, 27 - i * 1.2);
+      }
+      g.generateTexture(KEY, VIEW_W, VIEW_H);
+      g.destroy();
     }
-    // Gångväg ut från entrén, så att butiken hör ihop med omvärlden.
-    const path = this.add.graphics().setDepth(DEPTH.ground + 1);
-    for (let i = 0; i < 7; i++) {
-      const p = isoToScreen(-1.1 - i * 0.85, 8.6 + i * 0.12);
-      path.fillStyle(mix(PALETTE.floor.b, PALETTE.grass.dark, 0.18), 1);
-      path.fillEllipse(p.x, p.y + 16, 54 - i * 2.5, 27 - i * 1.2);
-    }
+    this.add.image(0, 0, KEY).setOrigin(0, 0).setDepth(DEPTH.ground);
 
     // Bred kontaktskugga som binder ihop butiken med marken.
     const contact = this.add.sprite(centre.x, centre.y + 46, 'shadowL');
@@ -476,29 +491,35 @@ export class GameScene extends Phaser.Scene {
 
   /** Fjärran husrad bakom butiken – ger djup utan att stjäla uppmärksamhet. */
   private drawSkyline(): void {
-    const g = this.add.graphics().setDepth(DEPTH.farParallax);
-    // Kvarteret ska bara antydas – håll kontrasten mot himlen mycket låg,
-    // annars konkurrerar bakgrunden med butiken.
-    const far = mix(PALETTE.sky.low, PALETTE.grass.dark, 0.22);
-    const roof = mix(far, PALETTE.wood.deep, 0.22);
+    const KEY = 'bakedSkyline';
     const baseY = 300;
-    let x = -40;
-    while (x < VIEW_W + 60) {
-      const w = Phaser.Math.Between(44, 84);
-      const h = Phaser.Math.Between(34, 74);
-      g.fillStyle(far, 0.3);
-      g.fillRect(x, baseY - h, w, h);
-      g.fillStyle(roof, 0.28);
-      g.fillTriangle(x - 5, baseY - h, x + w / 2, baseY - h - 18, x + w + 5, baseY - h);
-      x += w + Phaser.Math.Between(12, 40);
+    if (!this.textures.exists(KEY)) {
+      const g = this.make.graphics({}, false);
+      // Kvarteret ska bara antydas – håll kontrasten mot himlen mycket låg,
+      // annars konkurrerar bakgrunden med butiken.
+      const far = mix(PALETTE.sky.low, PALETTE.grass.dark, 0.22);
+      const roof = mix(far, PALETTE.wood.deep, 0.22);
+      let x = -40;
+      while (x < VIEW_W + 60) {
+        const w = Phaser.Math.Between(44, 84);
+        const h = Phaser.Math.Between(34, 74);
+        g.fillStyle(far, 0.3);
+        g.fillRect(x, baseY - h, w, h);
+        g.fillStyle(roof, 0.28);
+        g.fillTriangle(x - 5, baseY - h, x + w / 2, baseY - h - 18, x + w + 5, baseY - h);
+        x += w + Phaser.Math.Between(12, 40);
+      }
+      // Trädrad framför husen.
+      g.fillStyle(mix(PALETTE.grass.dark, PALETTE.sky.low, 0.45), 0.32);
+      for (let tx = -20; tx < VIEW_W + 40; tx += Phaser.Math.Between(52, 104)) {
+        const r = Phaser.Math.Between(13, 21);
+        g.fillCircle(tx, baseY - 6 - r * 0.6, r);
+        g.fillRect(tx - 2.5, baseY - 12 - r * 0.6, 5, r + 12);
+      }
+      g.generateTexture(KEY, VIEW_W, baseY + 6);
+      g.destroy();
     }
-    // Trädrad framför husen.
-    g.fillStyle(mix(PALETTE.grass.dark, PALETTE.sky.low, 0.45), 0.32);
-    for (let tx = -20; tx < VIEW_W + 40; tx += Phaser.Math.Between(52, 104)) {
-      const r = Phaser.Math.Between(13, 21);
-      g.fillCircle(tx, baseY - 6 - r * 0.6, r);
-      g.fillRect(tx - 2.5, baseY - 12 - r * 0.6, 5, r + 12);
-    }
+    this.add.image(0, 0, KEY).setOrigin(0, 0).setDepth(DEPTH.farParallax);
   }
 
   /** Ett par fåglar som seglar över himlen. */
@@ -573,64 +594,59 @@ export class GameScene extends Phaser.Scene {
     const H = 62;
     const SKIRT = 6;
 
-    // Nordöstra väggen (längs gy = 0) – mörkare eftersom den vetter från ljuset.
-    const farTop = lighten(PALETTE.wall.far, 6);
-    const farBottom = darken(PALETTE.wall.far, 8);
-    for (let gx = 0; gx < GRID_W; gx++) {
-      const p = isoToScreen(gx, 0);
-      // Väggen ritas i vågräta band så att den kan tona från ljus till mörk.
-      const bands = 6;
+    /**
+     * En vägglöpa ritas som ett fåtal hela band längs hela väggen, inte som
+     * band per rutnätskolumn. Det ger samma gradient till en bråkdel av
+     * ritkostnaden – Phaser tessellierar om varje Graphics-yta varje bildruta.
+     */
+    const wallRun = (
+      from: { x: number; y: number },
+      to: { x: number; y: number },
+      dx: number,
+      top: number,
+      bottom: number,
+    ): void => {
+      const bands = 5;
       for (let b = 0; b < bands; b++) {
         const t0 = b / bands;
         const t1 = (b + 1) / bands;
-        g.fillStyle(mix(farTop, farBottom, t0), 1);
+        g.fillStyle(mix(top, bottom, t0), 1);
         g.beginPath();
-        g.moveTo(p.x, p.y - H * (1 - t0));
-        g.lineTo(p.x + 32, p.y + 16 - H * (1 - t0));
-        g.lineTo(p.x + 32, p.y + 16 - H * (1 - t1));
-        g.lineTo(p.x, p.y - H * (1 - t1));
+        g.moveTo(from.x, from.y - H * (1 - t0));
+        g.lineTo(to.x + dx, to.y + 16 - H * (1 - t0));
+        g.lineTo(to.x + dx, to.y + 16 - H * (1 - t1));
+        g.lineTo(from.x, from.y - H * (1 - t1));
         g.closePath();
         g.fillPath();
       }
       // Golvlist
       g.fillStyle(PALETTE.wall.skirting, 1);
       g.beginPath();
-      g.moveTo(p.x, p.y - SKIRT);
-      g.lineTo(p.x + 32, p.y + 16 - SKIRT);
-      g.lineTo(p.x + 32, p.y + 16);
-      g.lineTo(p.x, p.y);
+      g.moveTo(from.x, from.y - SKIRT);
+      g.lineTo(to.x + dx, to.y + 16 - SKIRT);
+      g.lineTo(to.x + dx, to.y + 16);
+      g.lineTo(from.x, from.y);
       g.closePath();
       g.fillPath();
-    }
+    };
+
+    // Nordöstra väggen (längs gy = 0) – mörkare eftersom den vetter från ljuset.
+    wallRun(
+      isoToScreen(0, 0),
+      isoToScreen(GRID_W - 1, 0),
+      32,
+      lighten(PALETTE.wall.far, 6),
+      darken(PALETTE.wall.far, 8),
+    );
 
     // Nordvästra väggen (längs gx = 0), med lucka för dörren vid gy 8–9
-    const nearTop = lighten(PALETTE.wall.near, 5);
-    const nearBottom = darken(PALETTE.wall.near, 7);
-    for (let gy = 0; gy < GRID_H; gy++) {
-      if (gy >= 8) continue;
-      const p = isoToScreen(0, gy);
-      const bands = 6;
-      for (let b = 0; b < bands; b++) {
-        const t0 = b / bands;
-        const t1 = (b + 1) / bands;
-        g.fillStyle(mix(nearTop, nearBottom, t0), 1);
-        g.beginPath();
-        g.moveTo(p.x, p.y - H * (1 - t0));
-        g.lineTo(p.x - 32, p.y + 16 - H * (1 - t0));
-        g.lineTo(p.x - 32, p.y + 16 - H * (1 - t1));
-        g.lineTo(p.x, p.y - H * (1 - t1));
-        g.closePath();
-        g.fillPath();
-      }
-      g.fillStyle(PALETTE.wall.skirting, 1);
-      g.beginPath();
-      g.moveTo(p.x, p.y - SKIRT);
-      g.lineTo(p.x - 32, p.y + 16 - SKIRT);
-      g.lineTo(p.x - 32, p.y + 16);
-      g.lineTo(p.x, p.y);
-      g.closePath();
-      g.fillPath();
-    }
+    wallRun(
+      isoToScreen(0, 0),
+      isoToScreen(0, 7),
+      -32,
+      lighten(PALETTE.wall.near, 5),
+      darken(PALETTE.wall.near, 7),
+    );
 
     const nw = isoToScreen(0, 0);
     const ne = isoToScreen(GRID_W, 0);
@@ -809,19 +825,26 @@ export class GameScene extends Phaser.Scene {
       .setDepth(DEPTH.daylight)
       .setBlendMode(Phaser.BlendModes.MULTIPLY);
 
-    // Vinjett: fyra mjuka kantband som ramar in bilden.
-    const v = this.add.graphics().setDepth(DEPTH.vignette);
-    const steps = 10;
-    for (let i = 0; i < steps; i++) {
-      const t = i / steps;
-      const a = 0.035 * (1 - t);
-      const inset = t * 70;
-      v.fillStyle(0x3b2a1a, a);
-      v.fillRect(0, inset, VIEW_W, 7);
-      v.fillRect(0, VIEW_H - inset - 7, VIEW_W, 7);
-      v.fillRect(inset, 0, 7, VIEW_H);
-      v.fillRect(VIEW_W - inset - 7, 0, 7, VIEW_H);
+    // Vinjett: fyrtio genomskinliga kantband skulle betyda fyrtio ritpass över
+    // halva skärmen varje bildruta. Bakad till en textur blir det ett pass.
+    const KEY = 'bakedVignette';
+    if (!this.textures.exists(KEY)) {
+      const v = this.make.graphics({}, false);
+      const steps = 10;
+      for (let i = 0; i < steps; i++) {
+        const t = i / steps;
+        const a = 0.035 * (1 - t);
+        const inset = t * 70;
+        v.fillStyle(0x3b2a1a, a);
+        v.fillRect(0, inset, VIEW_W, 7);
+        v.fillRect(0, VIEW_H - inset - 7, VIEW_W, 7);
+        v.fillRect(inset, 0, 7, VIEW_H);
+        v.fillRect(VIEW_W - inset - 7, 0, 7, VIEW_H);
+      }
+      v.generateTexture(KEY, VIEW_W, VIEW_H);
+      v.destroy();
     }
+    this.add.image(0, 0, KEY).setOrigin(0, 0).setDepth(DEPTH.vignette);
   }
 
   /**

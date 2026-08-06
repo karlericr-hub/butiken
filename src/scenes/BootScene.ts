@@ -732,6 +732,21 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('ring', 64, 32);
     g.destroy();
 
+    // Moln: bakas en gång i stället för att ritas som sju överlappande former
+    // per moln och bildruta. Sparar både geometri och fyllnadsgrad.
+    g = new Tex(this);
+    g.fillStyle(0xffffff, 0.3);
+    g.fillCircle(60, 30, 26);
+    g.fillCircle(88, 34, 20);
+    g.fillCircle(33, 35, 18);
+    g.fillStyle(0xffffff, 0.94);
+    g.fillCircle(60, 28, 20);
+    g.fillCircle(84, 32, 15);
+    g.fillCircle(37, 33, 13);
+    g.fillRoundedRect(32, 28, 56, 16, 8);
+    g.generateTexture('cloud', 120, 60);
+    g.destroy();
+
     // Ljuspöl: mjuk iso-diamant för fönsterljus (adderas ovanpå golvet).
     g = new Tex(this);
     for (let i = 0; i < 7; i++) {
@@ -831,6 +846,34 @@ export class BootScene extends Phaser.Scene {
     g.lineTo(5.5, 14.5);
     g.strokePath();
     g.generateTexture('iconCross', size, size);
+    g.destroy();
+
+    // Måne – kvällspanelens rubrikikon. Ritas som en hel skiva med kratrar;
+    // en skära skulle kräva att en cirkel stansades ut i bakgrundsfärgen, och
+    // ikonen måste fungera mot vilken botten som helst.
+    g = new Tex(this);
+    g.fillStyle(darken(PALETTE.accent.base, 10), 1);
+    g.fillCircle(c, c, 8.6);
+    g.fillStyle(PALETTE.accent.light, 1);
+    g.fillCircle(c, c - 0.5, 7.6);
+    g.fillStyle(darken(PALETTE.accent.base, 4), 0.55);
+    g.fillCircle(c - 2.4, c - 2.2, 2);
+    g.fillCircle(c + 2.6, c + 1.4, 2.6);
+    g.fillCircle(c - 1.6, c + 3, 1.4);
+    g.generateTexture('iconMoon', size, size);
+    g.destroy();
+
+    // Hänglås – markerar en uppgradering som ännu inte är upplåst.
+    g = new Tex(this);
+    g.lineStyle(2.4, PALETTE.text.muted, 1);
+    g.beginPath();
+    g.arc(c, c - 1.5, 4.2, Math.PI, 2 * Math.PI);
+    g.strokePath();
+    g.fillStyle(PALETTE.text.muted, 1);
+    g.fillRoundedRect(c - 6, c - 1.5, 12, 10, 2.2);
+    g.fillStyle(PALETTE.panel.card, 1);
+    g.fillCircle(c, c + 3, 1.7);
+    g.generateTexture('iconLock', size, size);
     g.destroy();
 
     // Kundvagn – menyns logotyp, i större format.

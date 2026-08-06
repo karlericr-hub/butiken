@@ -3,9 +3,12 @@ import { isProductUnlocked, type GameState } from '../state/GameState';
 import { BALANCE } from '../config/balance';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
+import { PRODUCT_COLORS } from '../config/products';
 import { sfx } from '../systems/Sfx';
 import { SaveSystem } from '../systems/SaveSystem';
-import { VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
+import { INV_SCALE, VIEW_W, VIEW_H, setupHiResCamera } from '../utils/scale';
+import { PALETTE, TEXT, css, lighten, darken, mix } from '../config/theme';
+import { addPanel } from '../ui/Panel';
 
 const COL_SUMMARY_X = 40;
 const COL_ORDER_X = 348;
@@ -33,6 +36,8 @@ export class EveningScene extends Phaser.Scene {
   /** Stänger ett öppet inmatningsfält för beställning (om något är öppet). */
   private activeInputCleanup?: (apply: boolean) => void;
   private cardTerminalFeeToday = 0;
+  /** Sant medan scenen tonar ut, så att knappen bara kan tryckas en gång. */
+  private leaving = false;
 
   constructor() {
     super('Evening');
@@ -45,6 +50,7 @@ export class EveningScene extends Phaser.Scene {
     this.order = {};
     this.orderTexts.clear();
     this.upgradeRefreshers = [];
+    this.leaving = false;
 
     // Betala hyra, löner och terminalhyra för dagen.
     this.wagesToday = this.state.staff.reduce((sum, m) => sum + m.dailyWage, 0);
@@ -67,38 +73,56 @@ export class EveningScene extends Phaser.Scene {
     }
 
     const W = VIEW_W;
-    this.add.rectangle(0, 0, W, VIEW_H, 0xffecc7).setOrigin(0, 0);
+    this.cameras.main.fadeIn(380, 255, 250, 240);
+
+    // Varm kvällshimmel som bakgrund till planeringsfasen.
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0xffd9a0, 0xffd9a0, 0xfff1d4, 0xfff1d4, 1);
+    bg.fillRect(0, 0, W, VIEW_H);
+    // Några stjärnor högt upp, mest som stämning.
+    bg.fillStyle(0xffffff, 0.55);
+    for (let i = 0; i < 22; i++) {
+      bg.fillCircle(
+        Phaser.Math.Between(0, W),
+        Phaser.Math.Between(6, 70),
+        Phaser.Math.FloatBetween(0.8, 1.8),
+      );
+    }
 
     // Kortpaneler bakom de tre kolumnerna
-    const cards = this.add.graphics();
     for (const [cx, cw] of [
       [COL_SUMMARY_X - 14, 312],
       [COL_ORDER_X - 14, 332],
       [COL_UPGRADES_X - 14, 316],
     ] as [number, number][]) {
-      cards.fillStyle(0xfffdf6, 1);
-      cards.fillRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
-      cards.lineStyle(1, 0xe6d5ae, 1);
-      cards.strokeRoundedRect(cx, COL_TOP_Y - 16, cw, 496, 12);
+      addPanel(this, cx + cw / 2, COL_TOP_Y - 16 + 248, cw, 496);
     }
 
-    this.add
-      .text(W / 2, 24, `🌙 Dag ${this.state.day} är slut!`, {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '28px',
-        color: '#ef6c00',
-        fontStyle: 'bold',
-      })
+    const title = this.add
+      .text(
+        W / 2 + 14,
+        24,
+        `Dag ${this.state.day} är slut!`,
+        TEXT.title({ fontSize: '28px', color: css(PALETTE.accent.deep) }),
+      )
       .setOrigin(0.5, 0);
+    this.add
+      .sprite(title.x - title.width / 2 - 20, 40, 'iconMoon')
+      .setScale(INV_SCALE * 1.3);
 
     this.buildSummary(COL_SUMMARY_X, COL_TOP_Y);
     this.buildOrderSection(COL_ORDER_X, COL_TOP_Y);
     this.buildUpgradeSection(COL_UPGRADES_X, COL_TOP_Y);
     this.buildWarning();
 
-    this.makeButton(800, 596, 260, 46, `Starta dag ${this.state.day + 1} ▶`, () =>
-      this.startNextDay(),
-    );
+    this.makeButton(800, 596, 260, 46, `Starta dag ${this.state.day + 1} ▶`, () => {
+      // Ett andra klick skulle starta om uttoningen och låsa scenen.
+      if (this.leaving) return;
+      this.leaving = true;
+      this.activeInputCleanup?.(true);
+      this.cameras.main.fadeOut(300, 255, 250, 240);
+      this.cameras.main.once('camerafadeoutcomplete', () => this.startNextDay());
+    });
 
     // Ta bort ett eventuellt öppet inmatningsfält när scenen lämnas.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.activeInputCleanup?.(false));
@@ -110,74 +134,77 @@ export class EveningScene extends Phaser.Scene {
     const purchases =
       s.costsToday - BALANCE.rentPerDay - this.wagesToday - this.cardTerminalFeeToday;
 
-    this.add.text(x, y, 'Dagens resultat', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '18px',
-      color: '#4e342e',
-      fontStyle: 'bold',
-    });
+    this.sectionTitle(x, y, 'Dagens resultat');
+
+    const good = css(PALETTE.success.deep);
+    const bad = css(PALETTE.danger.deep);
+    const muted = css(PALETTE.text.body);
 
     const rows: [string, string, string][] = [
-      ['Försäljning', `+${s.revenueToday} kr`, '#2e7d32'],
-      ['Varuinköp', `-${purchases} kr`, '#c62828'],
-      ['Hyra', `-${BALANCE.rentPerDay} kr`, '#c62828'],
+      ['Försäljning', `+${s.revenueToday} kr`, good],
+      ['Varuinköp', `-${purchases} kr`, bad],
+      ['Hyra', `-${BALANCE.rentPerDay} kr`, bad],
     ];
     if (this.cardTerminalFeeToday > 0) {
-      rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, '#c62828']);
+      rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, bad]);
     }
     if (this.wagesToday > 0) {
-      rows.push(['Löner', `-${this.wagesToday} kr`, '#c62828']);
+      rows.push(['Löner', `-${this.wagesToday} kr`, bad]);
     }
     rows.push(
-      ['Vinst', `${profit >= 0 ? '+' : ''}${profit} kr`, profit >= 0 ? '#2e7d32' : '#c62828'],
-      ['', '', '#ffffff'],
-      ['Betjänade kunder', `${s.servedToday}`, '#6d4c41'],
-      ['Förlorade kunder', `${s.lostToday}`, '#6d4c41'],
-      ['Butiksbetyg', `⭐ ${Math.round(this.state.rating)}`, '#ef6c00'],
-      ['Sålda varor idag', '', '#4e342e'],
+      ['Vinst', `${profit >= 0 ? '+' : ''}${profit} kr`, profit >= 0 ? good : bad],
+      ['', '', muted],
+      ['Betjänade kunder', `${s.servedToday}`, muted],
+      ['Förlorade kunder', `${s.lostToday}`, muted],
+      ['Butiksbetyg', `${Math.round(this.state.rating)}`, css(PALETTE.accent.deep)],
+      ['Sålda varor idag', '', css(PALETTE.text.strong)],
     );
     for (const p of this.state.products.filter((prod) => isProductUnlocked(this.state, prod))) {
-      rows.push([`  ${p.name}`, `${s.soldToday[p.id] ?? 0} st`, '#6d4c41']);
+      rows.push([`  ${p.name}`, `${s.soldToday[p.id] ?? 0} st`, muted]);
     }
 
     rows.forEach(([label, value, color], i) => {
       const ry = y + 34 + i * 24;
       if (!label) return;
-      this.add.text(x, ry, label, {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '14px',
-        color: '#4e342e',
-      });
-      this.add
-        .text(x + 268, ry, value, {
-          fontFamily: '"Baloo 2", sans-serif',
-          fontSize: '14px',
-          color,
-          fontStyle: 'bold',
-        })
+      // Varannan rad får en svag botten så att blicken följer raden.
+      if (value && i % 2 === 1) {
+        this.add
+          .rectangle(x - 6, ry - 2, 280, 22, PALETTE.accent.light, 0.1)
+          .setOrigin(0, 0);
+      }
+      this.add.text(x, ry, label, TEXT.label({ fontSize: '14px', color: css(PALETTE.text.strong) }));
+      const valueText = this.add
+        .text(x + 268, ry, value, TEXT.label({ fontSize: '14px', color, fontStyle: 'bold' }))
         .setOrigin(1, 0);
+      // Stjärnan ritas som ikon i stället för emoji, precis som i HUD:en.
+      if (label === 'Butiksbetyg') {
+        this.add
+          .sprite(valueText.x - valueText.width - 11, ry + 9, 'iconStar')
+          .setScale(INV_SCALE * 0.85);
+      }
     });
 
     const kassaY = y + 34 + rows.length * 24 + 6;
-    this.add.text(x, kassaY, 'Kassa', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '15px',
-      color: '#4e342e',
-      fontStyle: 'bold',
-    });
+    this.add.text(x, kassaY, 'Kassa', TEXT.label({ fontSize: '15px', color: css(PALETTE.text.strong), fontStyle: 'bold' }));
     this.kassaText = this.add
-      .text(x + 268, kassaY, '', {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '15px',
-        fontStyle: 'bold',
-      })
+      .text(x + 268, kassaY, '', TEXT.label({ fontSize: '15px', fontStyle: 'bold' }))
       .setOrigin(1, 0);
     this.refreshKassaText();
   }
 
+  /** Rubrik med bärnstensstreck under – används av alla tre kolumner. */
+  private sectionTitle(x: number, y: number, label: string): void {
+    const t = this.add.text(x, y, label, TEXT.heading({ fontSize: '18px' }));
+    const rule = this.add.graphics();
+    rule.fillStyle(PALETTE.accent.base, 0.85);
+    rule.fillRoundedRect(x, y + t.height + 1, 46, 3, 1.5);
+  }
+
   private refreshKassaText(): void {
     this.kassaText.setText(`${this.state.money} kr`);
-    this.kassaText.setColor(this.state.money >= 0 ? '#ef6c00' : '#c62828');
+    this.kassaText.setColor(
+      this.state.money >= 0 ? css(PALETTE.accent.deep) : css(PALETTE.danger.deep),
+    );
   }
 
   /** Byggs om när en uppgradering låser upp en ny vara. */
@@ -191,58 +218,52 @@ export class EveningScene extends Phaser.Scene {
     const c = this.add.container(0, 0);
     this.orderContainer = c;
 
-    c.add(
-      this.add.text(x, y, 'Beställ varor', {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '18px',
-        color: '#4e342e',
-        fontStyle: 'bold',
-      }),
-    );
-    c.add(
-      this.add.text(x, y + 26, 'Leverans imorgon förmiddag', {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '12px',
-        color: '#8d6e63',
-      }),
-    );
+    this.sectionTitle(x, y, 'Beställ varor');
+    c.add(this.add.text(x, y + 26, 'Leverans imorgon förmiddag', TEXT.small()));
 
     const available = this.state.products.filter((p) => isProductUnlocked(this.state, p));
     available.forEach((p, i) => {
       const ry = y + 58 + i * 78;
       this.order[p.id] ??= 0;
 
+      // Färgprick som knyter raden till varans färg på hyllan.
+      const dot = this.add.graphics();
+      dot.fillStyle(PRODUCT_COLORS[p.id] ?? 0xcccccc, 1);
+      dot.fillCircle(x + 5, ry + 9, 5);
+      dot.lineStyle(1.5, darken(PRODUCT_COLORS[p.id] ?? 0xcccccc, 20), 1);
+      dot.strokeCircle(x + 5, ry + 9, 5);
+      c.add(dot);
+
       c.add(
-        this.add.text(x, ry, `${p.name}  (${p.buyPrice} kr/st)`, {
-          fontFamily: '"Baloo 2", sans-serif',
-          fontSize: '15px',
-          color: '#4e342e',
-          fontStyle: 'bold',
-        }),
+        this.add.text(
+          x + 16,
+          ry,
+          `${p.name}  (${p.buyPrice} kr/st)`,
+          TEXT.label({ fontSize: '15px', color: css(PALETTE.text.strong), fontStyle: 'bold' }),
+        ),
       );
       c.add(
         this.add.text(
-          x,
+          x + 16,
           ry + 22,
           `Hylla: ${p.currentStock}/${p.shelfCapacity}   Lager: ${this.state.storage[p.id] ?? 0}`,
-          {
-            fontFamily: '"Baloo 2", sans-serif',
-            fontSize: '12px',
-            color: '#8d6e63',
-          },
+          TEXT.small(),
         ),
       );
 
       c.add(this.makeButton(x + 190, ry + 12, 32, 32, '−', () => this.changeOrder(p.id, -1)));
       const qty = this.add
-        .text(x + 231, ry + 12, '0', {
-          fontFamily: '"Baloo 2", sans-serif',
-          fontSize: '18px',
-          color: '#4e342e',
-          fontStyle: 'bold',
-          backgroundColor: '#f7f0dd',
-          padding: { x: 6, y: 3 },
-        })
+        .text(
+          x + 231,
+          ry + 12,
+          '0',
+          TEXT.body({
+            color: css(PALETTE.text.strong),
+            fontStyle: 'bold',
+            backgroundColor: css(mix(PALETTE.panel.card, PALETTE.accent.light, 0.2)),
+            padding: { x: 7, y: 4 },
+          }),
+        )
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true });
       // Klicka på siffran för att skriva in antalet direkt.
@@ -253,18 +274,14 @@ export class EveningScene extends Phaser.Scene {
     });
 
     const totalY = y + 58 + available.length * 78 + 4;
-    this.totalText = this.add.text(x, totalY, '', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '15px',
-      color: '#ef6c00',
-      fontStyle: 'bold',
-    });
+    this.totalText = this.add.text(
+      x,
+      totalY,
+      '',
+      TEXT.label({ fontSize: '15px', color: css(PALETTE.accent.deep), fontStyle: 'bold' }),
+    );
     c.add(this.totalText);
-    this.moneyAfterText = this.add.text(x, totalY + 24, '', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '13px',
-      color: '#8d6e63',
-    });
+    this.moneyAfterText = this.add.text(x, totalY + 24, '', TEXT.small({ fontSize: '13px' }));
     c.add(this.moneyAfterText);
     this.refreshOrderTexts();
   }
@@ -391,19 +408,14 @@ export class EveningScene extends Phaser.Scene {
   }
 
   private buildUpgradeSection(x: number, y: number): void {
-    this.add.text(x, y, 'Uppgraderingar', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '18px',
-      color: '#4e342e',
-      fontStyle: 'bold',
-    });
+    this.sectionTitle(x, y, 'Uppgraderingar');
 
-    this.tooltip = this.add.text(x, y + 34 + UPGRADES.length * 36 + 8, '', {
-      fontFamily: '"Baloo 2", sans-serif',
-      fontSize: '12px',
-      color: '#6d4c41',
-      wordWrap: { width: 285 },
-    });
+    this.tooltip = this.add.text(
+      x,
+      y + 34 + UPGRADES.length * 36 + 8,
+      '',
+      TEXT.small({ color: css(PALETTE.text.body), wordWrap: { width: 285 } }),
+    );
 
     UPGRADES.forEach((def, i) => {
       this.buildUpgradeRow(def, x, y + 34 + i * 36);
@@ -411,25 +423,27 @@ export class EveningScene extends Phaser.Scene {
   }
 
   private buildUpgradeRow(def: UpgradeDef, x: number, y: number): void {
+    const idle = mix(PALETTE.panel.card, PALETTE.accent.light, 0.18);
+    const dimmed = mix(PALETTE.panel.card, PALETTE.text.muted, 0.14);
+    const edge = mix(PALETTE.accent.base, PALETTE.panel.card, 0.55);
+
     const bg = this.add
-      .rectangle(x, y, 285, 32, 0xf7f0dd)
+      .rectangle(x, y, 285, 32, idle)
       .setOrigin(0, 0)
-      .setStrokeStyle(1, 0xdccba4)
+      .setStrokeStyle(1.5, edge)
       .setInteractive({ useHandCursor: true });
     const name = this.add
-      .text(x + 10, y + 16, def.name, {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '13px',
-        color: '#4e342e',
-        fontStyle: 'bold',
-      })
+      .text(
+        x + 28,
+        y + 16,
+        def.name,
+        TEXT.small({ fontSize: '13px', color: css(PALETTE.text.strong), fontStyle: 'bold' }),
+      )
       .setOrigin(0, 0.5);
+    // Statusikonen till vänster: bock när den är köpt, hänglås när den är låst.
+    const mark = this.add.sprite(x + 15, y + 16, 'iconCheck').setScale(INV_SCALE * 0.8);
     const status = this.add
-      .text(x + 277, y + 16, '', {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: '12px',
-        fontStyle: 'bold',
-      })
+      .text(x + 277, y + 16, '', TEXT.small({ fontSize: '12px', fontStyle: 'bold' }))
       .setOrigin(1, 0.5);
 
     const refresh = (): void => {
@@ -437,27 +451,33 @@ export class EveningScene extends Phaser.Scene {
       const pendingAd = def.id === 'reklam' && this.state.adCampaignPending;
       const reqMet = this.upgradeSystem.requirementsMet(def);
       if (owned || pendingAd) {
-        status.setText(pendingAd ? '✔ Beställd' : '✔ Köpt');
-        status.setColor('#2e7d32');
-        name.setColor('#a1887f');
-        bg.setFillStyle(0xefe6d2);
+        mark.setTexture('iconCheck').setVisible(true);
+        status.setText(pendingAd ? 'Beställd' : 'Köpt');
+        status.setColor(css(PALETTE.success.deep));
+        name.setColor(css(PALETTE.text.muted));
+        bg.setFillStyle(dimmed);
       } else if (!reqMet) {
-        status.setText('🔒');
-        status.setColor('#a1887f');
-        name.setColor('#a1887f');
-        bg.setFillStyle(0xefe6d2);
+        mark.setTexture('iconLock').setVisible(true);
+        status.setText('');
+        name.setColor(css(PALETTE.text.muted));
+        bg.setFillStyle(dimmed);
       } else {
+        mark.setVisible(false);
         status.setText(`${def.cost} kr`);
-        status.setColor(this.state.money >= def.cost ? '#ef6c00' : '#c62828');
-        name.setColor('#4e342e');
-        bg.setFillStyle(0xf7f0dd);
+        status.setColor(
+          this.state.money >= def.cost ? css(PALETTE.accent.deep) : css(PALETTE.danger.deep),
+        );
+        name.setColor(css(PALETTE.text.strong));
+        bg.setFillStyle(idle);
       }
+      // Namnet flyttar in när ingen ikon visas, så raden aldrig ser tom ut.
+      name.setX(mark.visible ? x + 28 : x + 12);
     };
     refresh();
     this.upgradeRefreshers.push(refresh);
 
     bg.on('pointerover', () => {
-      bg.setStrokeStyle(1, 0xffa726);
+      bg.setStrokeStyle(2, PALETTE.accent.warm);
       let text = def.description;
       if (!this.upgradeSystem.requirementsMet(def)) {
         const names = (def.requires ?? [])
@@ -468,12 +488,20 @@ export class EveningScene extends Phaser.Scene {
       this.tooltip.setText(text);
     });
     bg.on('pointerout', () => {
-      bg.setStrokeStyle(1, 0xdccba4);
+      bg.setStrokeStyle(1.5, edge);
       this.tooltip.setText('');
     });
     bg.on('pointerdown', () => {
       if (this.upgradeSystem.buy(def)) {
         sfx.chaChing();
+        // Kort grön blink bekräftar köpet.
+        bg.setFillStyle(PALETTE.success.light);
+        this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          duration: 420,
+          onComplete: () => this.upgradeRefreshers.forEach((r) => r()),
+        });
         this.upgradeRefreshers.forEach((r) => r());
         // Låste köpet upp en ny vara? Då ska den gå att beställa direkt.
         if (this.state.products.some((p) => p.requiresUpgrade === def.id)) {
@@ -487,18 +515,24 @@ export class EveningScene extends Phaser.Scene {
 
   private buildWarning(): void {
     if (this.state.money >= 0) return;
+    // Röd varningsruta så att konkursrisken inte går att missa.
+    const box = this.add.graphics();
+    box.fillStyle(PALETTE.danger.base, 0.1);
+    box.fillRoundedRect(COL_SUMMARY_X - 8, 458, 296, 76, 8);
+    box.lineStyle(2, PALETTE.danger.base, 0.6);
+    box.strokeRoundedRect(COL_SUMMARY_X - 8, 458, 296, 76, 8);
+
     this.warningText = this.add
       .text(
         COL_SUMMARY_X,
         466,
-        `⚠️ Kassan är negativ! Kväll ${this.state.debtEvenings} av ${BALANCE.maxDebtEvenings} – sedan går butiken i konkurs.`,
-        {
-          fontFamily: '"Baloo 2", sans-serif',
+        `Kassan är negativ! Kväll ${this.state.debtEvenings} av ${BALANCE.maxDebtEvenings} – sedan går butiken i konkurs.`,
+        TEXT.label({
           fontSize: '14px',
-          color: '#c62828',
+          color: css(PALETTE.danger.deep),
           fontStyle: 'bold',
           wordWrap: { width: 280 },
-        },
+        }),
       )
       .setOrigin(0, 0);
 
@@ -513,7 +547,7 @@ export class EveningScene extends Phaser.Scene {
           this.state.loanTaken = true;
           this.state.money += BALANCE.emergencyLoanAmount;
           this.warningText?.setText('Nödlånet är insatt på kontot. Lycka till!');
-          this.warningText?.setColor('#2e7d32');
+          this.warningText?.setColor(css(PALETTE.success.deep));
           this.refreshOrderTexts();
           this.refreshKassaText();
         },
@@ -556,24 +590,40 @@ export class EveningScene extends Phaser.Scene {
     label: string,
     onClick: () => void,
   ): Phaser.GameObjects.GameObject[] {
+    const fill = PALETTE.success.base;
+    const shade = this.add.rectangle(cx, cy + 4, w, h, PALETTE.panel.shadow, 0.16);
     const bg = this.add
-      .rectangle(cx, cy, w, h, 0x43a047)
-      .setStrokeStyle(2, 0x2e7d32)
+      .rectangle(cx, cy, w, h, fill)
+      .setStrokeStyle(2, PALETTE.success.deep)
       .setInteractive({ useHandCursor: true });
     const txt = this.add
-      .text(cx, cy, label, {
-        fontFamily: '"Baloo 2", sans-serif',
-        fontSize: h > 44 ? '19px' : '16px',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      })
+      .text(cx, cy, label, TEXT.button({ fontSize: h > 44 ? '19px' : '16px' }))
       .setOrigin(0.5);
-    bg.on('pointerover', () => bg.setFillStyle(0x4caf50));
-    bg.on('pointerout', () => bg.setFillStyle(0x43a047));
+
+    // Knappen lyfts vid hovring och trycks ned vid klick – skuggan står kvar.
+    const setLift = (dy: number): void => {
+      bg.setPosition(cx, cy + dy);
+      txt.setPosition(cx, cy + dy);
+      shade.setAlpha(0.16 - dy * 0.02);
+    };
+    bg.on('pointerover', () => {
+      bg.setFillStyle(lighten(fill, 10));
+      setLift(-1);
+    });
+    bg.on('pointerout', () => {
+      bg.setFillStyle(fill);
+      setLift(0);
+    });
+    bg.on('pointerup', () => {
+      bg.setFillStyle(lighten(fill, 10));
+      setLift(-1);
+    });
     bg.on('pointerdown', () => {
+      bg.setFillStyle(darken(fill, 8));
+      setLift(3);
       sfx.pop();
       onClick();
     });
-    return [bg, txt];
+    return [bg, txt, shade];
   }
 }
