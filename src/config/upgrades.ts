@@ -33,9 +33,11 @@ export const UPGRADES: UpgradeDef[] = [
   {
     id: 'anstalld_kassor',
     name: 'Anställd kassör',
-    description: 'Sköter kassan automatiskt så att du kan göra annat. Lön 60 kr/dag.',
+    description:
+      'Anställer en kassör som sköter en kassa automatiskt så att du kan göra annat. Bemannar nästa obemannade kassa. Lön 60 kr/dag.',
     cost: 400,
     requires: ['kortterminal'],
+    repeatable: true,
   },
   {
     id: 'anstalld_pafyllare',
@@ -58,9 +60,9 @@ export const UPGRADES: UpgradeDef[] = [
     id: 'extra_kassa',
     name: 'Extra kassa',
     description:
-      'Öppnar en kassa till med en egen kassör i den blå rutan. Fler kassor betjänar kön snabbare. Lön 60 kr/dag.',
+      'Öppnar en kassa till i den blå rutan. Fler kassor betjänar kön snabbare – men kassan står tom tills du anställer en kassör till den.',
     cost: 500,
-    requires: ['anstalld_kassor'],
+    requires: ['kortterminal'],
     repeatable: true,
   },
   {
