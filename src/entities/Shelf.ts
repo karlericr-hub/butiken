@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Product } from '../state/GameState';
-import { isoToScreen, TILE_W } from '../utils/iso';
+import { isoToScreen, screenToIso, TILE_W, TILE_H } from '../utils/iso';
 import { INV_SCALE } from '../utils/scale';
 import { PRODUCT_COLORS } from '../config/products';
 import { sfx } from '../systems/Sfx';
@@ -16,13 +16,21 @@ const MINI_POSITIONS: [number, number][] = [
   [-24, -27],
 ];
 
-/** Horisontell förskjutning (skärm-px) för de två lådorna på en dubbelhylla. */
-const BOX_DX = 17;
+/** Storleken på en låda på en dubbelhylla jämfört med en enkellåda. */
+const DOUBLE_SCALE = 0.72;
+/**
+ * De två lådorna förskjuts ett halvt (nedskalat) cellsteg åt var sitt håll
+ * längs den isometriska gx-axeln, så att lådornas toppar tessellerar precis
+ * som två grannplattor i stället för att flyta bredvid varandra.
+ */
+const BOX_STEP_X = (TILE_W / 2) * DOUBLE_SCALE * 0.5;
+const BOX_STEP_Y = (TILE_H / 2) * DOUBLE_SCALE * 0.5;
 
 /** En enskild låda på hyllan – egen kub, mätare och varupuckar. */
 interface Box {
-  /** Kubens lokala x-förskjutning i containern. */
+  /** Kubens lokala förskjutning i containern (skärm-px). */
   localX: number;
+  localY: number;
   /** Skalfaktor jämfört med en enkellåda (mindre när hyllan har två lådor). */
   scale: number;
   cube: Phaser.GameObjects.Sprite;
@@ -73,18 +81,22 @@ export class Shelf extends Phaser.GameObjects.Container {
 
     const tint = PRODUCT_COLORS[product.id] ?? 0xcccccc;
     const single = this.binCount === 1;
+    const scale = single ? 1 : DOUBLE_SCALE;
+    // Lådorna byggs bakifrån och fram (uppe-vänster → nere-höger) så att den
+    // främre lådan hamnar överst i ritordningen.
     for (let i = 0; i < this.binCount; i++) {
-      const localX = single ? 0 : i === 0 ? -BOX_DX : BOX_DX;
-      const scale = single ? 1 : 0.68;
+      const step = single ? 0 : i === 0 ? -1 : 1;
+      const localX = step * BOX_STEP_X;
+      const localY = step * BOX_STEP_Y;
 
-      const cube = scene.add.sprite(localX, single ? 0 : 4, 'shelfCube');
+      const cube = scene.add.sprite(localX, localY, 'shelfCube');
       cube.setOrigin(0.5, 40 / 60);
       cube.setScale(INV_SCALE * scale);
       this.add(cube);
 
       const minis: Phaser.GameObjects.Sprite[] = [];
       MINI_POSITIONS.forEach(([mx, my], m) => {
-        const mini = scene.add.sprite(localX + mx * scale, (single ? 0 : 4) + my * scale, 'mini');
+        const mini = scene.add.sprite(localX + mx * scale, localY + my * scale, 'mini');
         mini.setScale(INV_SCALE * scale);
         // Lådorna längre bak är en aning mörkare – ger djup i stapeln.
         mini.setTint(m >= 3 ? darken(tint, 8) : tint);
@@ -95,13 +107,14 @@ export class Shelf extends Phaser.GameObjects.Container {
 
       this.boxes.push({
         localX,
+        localY,
         scale,
         cube,
         minis,
         barCx: localX,
-        barTopY: single ? -50 : -40,
+        barTopY: localY + (single ? -50 : -38),
         barW: single ? 44 : 30,
-        alertY: single ? -68 : -50,
+        alertY: localY + (single ? -68 : -46),
       });
     }
 
@@ -156,18 +169,18 @@ export class Shelf extends Phaser.GameObjects.Container {
   /** Punkten framför en viss låda där man ställer sig. */
   boxStandPoint(i: number): { x: number; y: number } {
     const front = isoToScreen(this.gridX, this.gridY + 1);
-    return { x: front.x + this.boxes[i].localX, y: front.y };
+    return { x: front.x + this.boxes[i].localX, y: front.y + this.boxes[i].localY };
   }
 
   /** Låda i:s mittpunkt i skärmkoordinater (för flyttext och förlopp). */
   boxAnchor(i: number): { x: number; y: number } {
-    return { x: this.x + this.boxes[i].localX, y: this.y };
+    return { x: this.x + this.boxes[i].localX, y: this.y + this.boxes[i].localY };
   }
 
   /** Rutnätskoordinat framför en låda – används för klickzon och markering. */
   boxFrontGrid(i: number): { gx: number; gy: number } {
-    const e = this.boxes[i].localX / TILE_W;
-    return { gx: this.gridX + e, gy: this.gridY + 1 - e };
+    const front = isoToScreen(this.gridX, this.gridY + 1);
+    return screenToIso(front.x + this.boxes[i].localX, front.y + this.boxes[i].localY);
   }
 
   /** Kunden går till den låda som har mest kvar (annars rakt framför hyllan). */
