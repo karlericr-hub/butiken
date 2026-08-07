@@ -1,4 +1,4 @@
-import { isProductUnlocked, type GameState } from '../state/GameState';
+import { checkoutCount, isProductUnlocked, type GameState } from '../state/GameState';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { BALANCE } from '../config/balance';
 
@@ -24,9 +24,23 @@ export class UpgradeSystem {
     )?.id;
   }
 
+  /** Nästa kassa (0 = huvudkassan) som saknar en anställd kassör (annars undefined). */
+  nextUnstaffedCheckout(): number | undefined {
+    const taken = new Set(
+      this.state.staff
+        .filter((m) => m.role === 'kassor')
+        .map((m) => m.checkoutIndex ?? 0),
+    );
+    for (let i = 0; i < checkoutCount(this.state); i++) {
+      if (!taken.has(i)) return i;
+    }
+    return undefined;
+  }
+
   /** Har en repeaterbar uppgradering nått sitt tak (allt bemannat/utbyggt)? */
   atCapacity(def: UpgradeDef): boolean {
     if (def.id === 'anstalld_pafyllare') return !this.nextRestockerProduct();
+    if (def.id === 'anstalld_kassor') return this.nextUnstaffedCheckout() === undefined;
     if (def.id === 'lagerutrymme') {
       return this.state.storageExpansions >= BALANCE.maxStorageExpansions;
     }
@@ -70,13 +84,19 @@ export class UpgradeSystem {
       this.state.storageExpansions++;
       return true;
     }
-    // Extra kassa med egen kassör (repeaterbar).
+    // Extra kassa öppnar bara en ny kassaruta – kassören anställs separat.
     if (def.id === 'extra_kassa') {
       this.state.extraCheckouts++;
+      return true;
+    }
+    // Anställ en kassör till nästa obemannade kassa (repeaterbar).
+    if (def.id === 'anstalld_kassor') {
+      const index = this.nextUnstaffedCheckout();
+      if (index === undefined) return false;
       this.state.staff.push({
-        id: `kassor-${this.state.extraCheckouts}`,
+        id: `kassor-${index}`,
         role: 'kassor',
-        checkoutIndex: this.state.extraCheckouts,
+        checkoutIndex: index,
         dailyWage: BALANCE.cashierWage,
       });
       return true;
@@ -85,14 +105,6 @@ export class UpgradeSystem {
     this.state.upgrades.push(def.id);
     // "Större hyllor" delar varje hylla i två lådor (se shelfBinCount) – ingen
     // ändring av produktdatan behövs här.
-    if (def.id === 'anstalld_kassor') {
-      this.state.staff.push({
-        id: 'kassor-0',
-        role: 'kassor',
-        checkoutIndex: 0,
-        dailyWage: BALANCE.cashierWage,
-      });
-    }
     if (def.id === 'paketombud') {
       this.state.isParcelAgent = true;
     }
