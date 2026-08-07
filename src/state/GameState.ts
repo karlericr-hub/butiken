@@ -1,11 +1,20 @@
+import { BALANCE } from '../config/balance';
+
 export interface Product {
   id: string;
   name: string;
   category: 'basvara' | 'kyld' | 'godis' | 'frukt' | 'paket';
   buyPrice: number;
   sellPrice: number;
+  /** Kapacitet per låda. Utan "Större hyllor" har hyllan en låda, annars två. */
   shelfCapacity: number;
+  /** Totalt antal enheter på hyllan (summan av lådorna). */
   currentStock: number;
+  /**
+   * Lager per låda. Med "Större hyllor" delas hyllan i två lådor som fylls på
+   * var för sig. Saknas fältet (äldre sparfiler) härleds det från currentStock.
+   */
+  binStock?: number[];
   unlockLevel: number;
   /** Uppgradering som måste ägas för att varan ska säljas. */
   requiresUpgrade?: string;
@@ -13,6 +22,11 @@ export interface Product {
 
 export function isProductUnlocked(state: GameState, product: Product): boolean {
   return !product.requiresUpgrade || state.upgrades.includes(product.requiresUpgrade);
+}
+
+/** Antal separata lådor per hylla – dubblas av uppgraderingen "Större hyllor". */
+export function shelfBinCount(state: GameState): number {
+  return state.upgrades.includes('battre_hyllor') ? BALANCE.shelfBoxCount : 1;
 }
 
 export interface StaffMember {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { isProductUnlocked, type GameState } from '../state/GameState';
+import { isProductUnlocked, shelfBinCount, type GameState } from '../state/GameState';
 import { BALANCE } from '../config/balance';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
@@ -246,7 +246,7 @@ export class EveningScene extends Phaser.Scene {
         this.add.text(
           x + 16,
           ry + 22,
-          `Hylla: ${p.currentStock}/${p.shelfCapacity}   Lager: ${this.state.storage[p.id] ?? 0}`,
+          `Hylla: ${p.currentStock}/${p.shelfCapacity * shelfBinCount(this.state)}   Lager: ${this.state.storage[p.id] ?? 0}`,
           TEXT.small(),
         ),
       );

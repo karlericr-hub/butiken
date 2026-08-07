@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { createInitialState, isProductUnlocked, type GameState } from '../state/GameState';
+import { createInitialState, isProductUnlocked, shelfBinCount, type GameState } from '../state/GameState';
 import { PRODUCTS } from '../config/products';
 import { BALANCE } from '../config/balance';
 import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
@@ -92,14 +92,22 @@ export class GameScene extends Phaser.Scene {
     this.drawWalls();
     this.placeProps();
 
+    const binCount = shelfBinCount(this.state);
     for (const product of this.state.products) {
       const pos = SHELF_POSITIONS[product.id];
       if (!pos || !isProductUnlocked(this.state, product)) continue;
-      const shelf = new Shelf(this, pos.gx, pos.gy, product);
-      // Markeringsruta framför hyllan (rent visuell) + klickzon.
-      new InteractionMarker(this, pos.gx, pos.gy + 1);
-      // Klickzon mellan hyllan och rutan – klick på hyllan, rutan eller nära räcker.
-      this.interactables.push({ gx: pos.gx, gy: pos.gy + 0.5, act: () => this.onShelfClicked(shelf) });
+      const shelf = new Shelf(this, pos.gx, pos.gy, product, binCount);
+      // Varje låda får en egen markeringsruta och klickzon så att lådorna kan
+      // fyllas på var för sig.
+      for (let i = 0; i < shelf.binCount; i++) {
+        const front = shelf.boxFrontGrid(i);
+        new InteractionMarker(this, front.gx, front.gy);
+        this.interactables.push({
+          gx: front.gx,
+          gy: front.gy,
+          act: () => this.onShelfClicked(shelf, i),
+        });
+      }
       this.shelves.set(product.id, shelf);
     }
 
@@ -987,28 +995,29 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private onShelfClicked(shelf: Shelf): void {
+  private onShelfClicked(shelf: Shelf, boxIndex: number): void {
     if (this.manager.busy) return;
-    const spot = shelf.standPoint;
-    this.manager.walkTo(spot.x, spot.y, () => this.restock(shelf));
+    const spot = shelf.boxStandPoint(boxIndex);
+    this.manager.walkTo(spot.x, spot.y, () => this.restock(shelf, boxIndex));
   }
 
-  /** Fyller på hyllan från lagerrummet (varor köps in via kvällsbeställningen). */
-  private restock(shelf: Shelf): void {
-    if (shelf.missingUnits <= 0) return;
+  /** Fyller på en av hyllans lådor från lagerrummet (varor köps in på kvällen). */
+  private restock(shelf: Shelf, boxIndex: number): void {
+    const anchor = shelf.boxAnchor(boxIndex);
+    if (shelf.boxMissingUnits(boxIndex) <= 0) return;
     const available = this.state.storage[shelf.product.id] ?? 0;
     if (available <= 0) {
-      this.floatText(shelf.x, shelf.y - 60, 'Lagret är tomt!', '#e53935');
+      this.floatText(anchor.x, anchor.y - 60, 'Lagret är tomt!', '#e53935');
       return;
     }
     this.manager.busy = true;
-    this.showProgress(shelf.x, shelf.y - 60, this.upgrades.restockTimeMs, () => {
-      const units = Math.min(shelf.missingUnits, this.state.storage[shelf.product.id] ?? 0);
+    this.showProgress(anchor.x, anchor.y - 60, this.upgrades.restockTimeMs, () => {
+      const units = Math.min(shelf.boxMissingUnits(boxIndex), this.state.storage[shelf.product.id] ?? 0);
       this.state.storage[shelf.product.id] -= units;
-      shelf.addStock(units);
-      this.floatText(shelf.x, shelf.y - 60, `+${units} ${shelf.product.name}`, css(PALETTE.success.base));
-      this.burst('sparkle', shelf.x, shelf.y - 30, 14);
-      shelf.celebrate();
+      shelf.addStock(boxIndex, units);
+      this.floatText(anchor.x, anchor.y - 60, `+${units} ${shelf.product.name}`, css(PALETTE.success.base));
+      this.burst('sparkle', anchor.x, anchor.y - 30, 14);
+      shelf.celebrate(boxIndex);
       sfx.pop();
       this.manager.stopReaching();
       this.manager.busy = false;
