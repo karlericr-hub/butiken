@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { createInitialState, isProductUnlocked, shelfBinCount, type GameState } from '../state/GameState';
+import {
+  checkoutCount,
+  createInitialState,
+  isProductUnlocked,
+  shelfBinCount,
+  type GameState,
+} from '../state/GameState';
 import { PRODUCTS } from '../config/products';
 import { BALANCE } from '../config/balance';
 import { isoToScreen, screenToIso, GRID_W, GRID_H } from '../utils/iso';
@@ -27,10 +33,22 @@ const SHELF_POSITIONS: Record<string, { gx: number; gy: number }> = {
   godis: { gx: 1, gy: 3 },
 };
 
+/**
+ * Kassornas platser: index 0 är huvudkassan, resten är köpta extrakassor.
+ * Platserna hålls isär så att kassornas blå rutor och köer inte krockar.
+ */
+const CHECKOUT_SLOTS: { gx: number; gy: number }[] = [
+  { gx: 7, gy: 6 },
+  { gx: 4, gy: 7 },
+  { gx: 2, gy: 5 },
+];
+
 export class GameScene extends Phaser.Scene {
   private state!: GameState;
   private manager!: Manager;
   private shelves = new Map<string, Shelf>();
+  /** Alla kassor; index 0 är huvudkassan (den föreståndaren kan sköta). */
+  private checkouts: Checkout[] = [];
   private checkout!: Checkout;
   private customerSystem!: CustomerSystem;
   private staffSystem!: StaffSystem;
@@ -45,7 +63,8 @@ export class GameScene extends Phaser.Scene {
   /** Sant så fort dagen avslutats, så att scenbytet bara startas en gång. */
   private dayEnded = false;
   private customersSentHome = false;
-  private paymentBusy = false;
+  /** Upptagen-flagga per kassa, så flera kassor kan expediera samtidigt. */
+  private paymentBusy: boolean[] = [];
   private parcelBusy = false;
   /** Klickzoner för stationerna (i rutnätskoordinater) med tillhörande handling. */
   private interactables: { gx: number; gy: number; act: () => void }[] = [];
@@ -67,7 +86,8 @@ export class GameScene extends Phaser.Scene {
     this.closingHandled = false;
     this.dayEnded = false;
     this.customersSentHome = false;
-    this.paymentBusy = false;
+    this.checkouts = [];
+    this.paymentBusy = [];
     this.parcelBusy = false;
     this.interactables = [];
     this.lightPools = [];
@@ -111,13 +131,25 @@ export class GameScene extends Phaser.Scene {
       this.shelves.set(product.id, shelf);
     }
 
-    this.checkout = new Checkout(this, 7, 6, this.upgrades.maxQueueLength);
-    new InteractionMarker(this, this.checkout.gridX + 1, this.checkout.gridY, 0x64b5f6);
-    this.interactables.push({
-      gx: this.checkout.gridX + 0.5,
-      gy: this.checkout.gridY,
-      act: () => this.onCheckoutClicked(),
-    });
+    // En kassa per köpt kassaplats. Varje kassa får en blå ruta där kassören
+    // står. Bara huvudkassan (index 0) kan skötas av föreståndaren via klick;
+    // extrakassorna sköts av sina anställda kassörer.
+    const count = Math.min(checkoutCount(this.state), CHECKOUT_SLOTS.length);
+    for (let i = 0; i < count; i++) {
+      const slot = CHECKOUT_SLOTS[i];
+      const checkout = new Checkout(this, slot.gx, slot.gy, this.upgrades.maxQueueLength);
+      new InteractionMarker(this, checkout.gridX + 1, checkout.gridY, 0x64b5f6);
+      if (i === 0) {
+        this.interactables.push({
+          gx: checkout.gridX + 0.5,
+          gy: checkout.gridY,
+          act: () => this.onCheckoutClicked(),
+        });
+      }
+      this.checkouts.push(checkout);
+    }
+    this.checkout = this.checkouts[0];
+    this.paymentBusy = this.checkouts.map(() => false);
 
     if (this.state.isParcelAgent) {
       this.parcelDesk = new ParcelDesk(this, 8, 3, BALANCE.parcelQueueMax);
@@ -139,7 +171,7 @@ export class GameScene extends Phaser.Scene {
     for (let gx = 0; gx < GRID_W; gx++) navGrid.block(gx, 0);
     for (let gy = 1; gy <= 7; gy++) navGrid.block(0, gy);
     for (const shelf of this.shelves.values()) navGrid.block(shelf.gridX, shelf.gridY);
-    navGrid.block(this.checkout.gridX, this.checkout.gridY);
+    for (const checkout of this.checkouts) navGrid.block(checkout.gridX, checkout.gridY);
     if (this.parcelDesk) navGrid.block(this.parcelDesk.gridX, this.parcelDesk.gridY);
     this.registry.set('navGrid', navGrid);
 
@@ -150,7 +182,7 @@ export class GameScene extends Phaser.Scene {
       this,
       this.state,
       this.shelves,
-      this.checkout,
+      this.checkouts,
       this.upgrades,
     );
     this.staffSystem.spawn();
@@ -159,7 +191,7 @@ export class GameScene extends Phaser.Scene {
     this.customerSystem = new CustomerSystem(
       this,
       this.shelves,
-      this.checkout,
+      this.checkouts,
       this.parcelDesk,
       this.state,
       this.economy,
@@ -168,14 +200,14 @@ export class GameScene extends Phaser.Scene {
     );
     this.customerSystem.start();
 
-    this.difficulty = new DifficultySystem(this.state, this.checkout, this.shelves);
+    this.difficulty = new DifficultySystem(this.state, this.checkouts, this.shelves);
 
     this.scheduleDelivery();
 
     this.drawLighting();
     this.createEmitters();
 
-    this.hud = new HUD(this, this.state, this.checkout);
+    this.hud = new HUD(this, this.state, this.checkouts);
 
     this.showPendingHint();
 
@@ -225,7 +257,7 @@ export class GameScene extends Phaser.Scene {
     this.handleClosing();
     this.tryStartPayment();
     this.tryStartParcelService();
-    this.staffSystem.update(time);
+    this.staffSystem.update(time, this.timeSystem.elapsed);
     if (!this.timeSystem.isClosed) this.difficulty.update(time);
     this.hud.update(this.timeSystem.isClosed ? 'STÄNGT' : this.timeSystem.clockText);
   }
@@ -1026,38 +1058,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   private tryStartPayment(): void {
-    if (this.paymentBusy) return;
-    const customer = this.checkout.queue[0];
+    this.checkouts.forEach((checkout, index) => this.tryStartPaymentAt(checkout, index));
+  }
+
+  private tryStartPaymentAt(checkout: Checkout, index: number): void {
+    if (this.paymentBusy[index]) return;
+    const customer = checkout.queue[0];
     if (!customer || !customer.readyToPay) return;
 
-    // Anställd kassör sköter kassan automatiskt, annars krävs föreståndaren.
-    const cashier = this.staffSystem.cashier;
-    const managerReady = this.manager.station === 'checkout' && !this.manager.busy;
+    // Anställd kassör sköter kassan automatiskt (om den inte är på rast). Bara
+    // huvudkassan kan i stället skötas av föreståndaren.
+    const cashier = this.staffSystem.availableCashier(index);
+    const managerReady =
+      index === 0 && this.manager.station === 'checkout' && !this.manager.busy;
     if (!cashier && !managerReady) return;
 
-    this.paymentBusy = true;
+    this.paymentBusy[index] = true;
     if (cashier) cashier.working = true;
     else this.manager.busy = true;
 
     customer.startPaying();
     const server = cashier ?? this.manager;
     server.startReaching();
-    this.showProgress(this.checkout.x, this.checkout.y - 64, this.upgrades.payTimeMs, () => {
+    this.showProgress(checkout.x, checkout.y - 64, this.upgrades.payTimeMs, () => {
       const total = this.economy.sell(customer.basket);
-      this.floatText(
-        this.checkout.x,
-        this.checkout.y - 64,
-        `+${total} kr`,
-        css(PALETTE.success.base),
-      );
-      this.coinBurst(this.checkout.x, this.checkout.y - 50);
-      this.checkout.flash();
+      this.floatText(checkout.x, checkout.y - 64, `+${total} kr`, css(PALETTE.success.base));
+      this.coinBurst(checkout.x, checkout.y - 50);
+      checkout.flash();
       this.punch();
       sfx.chaChing();
       server.stopReaching();
       customer.finishPayment();
-      this.checkout.dequeue();
-      this.paymentBusy = false;
+      checkout.dequeue();
+      this.paymentBusy[index] = false;
       if (cashier) cashier.working = false;
       else this.manager.busy = false;
     });

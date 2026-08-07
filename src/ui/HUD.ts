@@ -27,7 +27,7 @@ export class HUD {
   constructor(
     private scene: Phaser.Scene,
     private state: GameState,
-    private checkout: Checkout,
+    private checkouts: Checkout[],
   ) {
     const panel = scene.add.rectangle(0, 0, VIEW_W, BAR_H, PALETTE.panel.bar, 0.97);
     panel.setOrigin(0, 0).setDepth(DEPTH.hudPanel);
@@ -126,7 +126,10 @@ export class HUD {
 
     const s = this.state.stats;
     this.setStat(this.rating, String(Math.round(this.state.rating)));
-    this.setStat(this.queue, String(this.checkout.queue.length));
+    this.setStat(
+      this.queue,
+      String(this.checkouts.reduce((sum, c) => sum + c.queue.length, 0)),
+    );
     this.setStat(this.served, String(s.servedToday));
     this.setStat(this.lost, String(s.lostToday));
   }

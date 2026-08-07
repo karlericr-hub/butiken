@@ -40,9 +40,27 @@ export const UPGRADES: UpgradeDef[] = [
   {
     id: 'anstalld_pafyllare',
     name: 'Anställd påfyllare',
-    description: 'Fyller på hyllorna automatiskt från lagret. Lön 50 kr/dag.',
+    description:
+      'Anställer en påfyllare som sköter EN varusort automatiskt från lagret. Anställ en per varusort. Lön 50 kr/dag.',
     cost: 350,
     requires: ['battre_hyllor'],
+    repeatable: true,
+  },
+  {
+    id: 'lagerutrymme',
+    name: 'Extra lagerutrymme',
+    description: 'Bygger ut lagret så att det får plats med fler varor. Kan köpas flera gånger.',
+    cost: 180,
+    repeatable: true,
+  },
+  {
+    id: 'extra_kassa',
+    name: 'Extra kassa',
+    description:
+      'Öppnar en kassa till med en egen kassör i den blå rutan. Fler kassor betjänar kön snabbare. Lön 60 kr/dag.',
+    cost: 500,
+    requires: ['anstalld_kassor'],
+    repeatable: true,
   },
   {
     id: 'paketombud',

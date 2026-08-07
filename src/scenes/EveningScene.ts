@@ -1,5 +1,11 @@
 import Phaser from 'phaser';
-import { isProductUnlocked, shelfBinCount, type GameState } from '../state/GameState';
+import {
+  isProductUnlocked,
+  shelfBinCount,
+  storageCapacity,
+  storageUsed,
+  type GameState,
+} from '../state/GameState';
 import { BALANCE } from '../config/balance';
 import { UPGRADES, type UpgradeDef } from '../config/upgrades';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
@@ -26,6 +32,7 @@ export class EveningScene extends Phaser.Scene {
   private orderTexts = new Map<string, Phaser.GameObjects.Text>();
   private totalText!: Phaser.GameObjects.Text;
   private moneyAfterText!: Phaser.GameObjects.Text;
+  private storageText!: Phaser.GameObjects.Text;
   private warningText?: Phaser.GameObjects.Text;
   private kassaText!: Phaser.GameObjects.Text;
   private tooltip!: Phaser.GameObjects.Text;
@@ -283,7 +290,17 @@ export class EveningScene extends Phaser.Scene {
     c.add(this.totalText);
     this.moneyAfterText = this.add.text(x, totalY + 24, '', TEXT.small({ fontSize: '13px' }));
     c.add(this.moneyAfterText);
+    this.storageText = this.add.text(x, totalY + 42, '', TEXT.small({ fontSize: '13px' }));
+    c.add(this.storageText);
     this.refreshOrderTexts();
+  }
+
+  /** Antal beställda enheter totalt (alla varor), ev. utom en viss vara. */
+  private orderedUnits(excludeId?: string): number {
+    return this.state.products.reduce(
+      (sum, p) => sum + (p.id === excludeId ? 0 : this.order[p.id] ?? 0),
+      0,
+    );
   }
 
   private get orderCost(): number {
@@ -395,6 +412,9 @@ export class EveningScene extends Phaser.Scene {
       const affordable = Math.floor((this.state.money - costWithout) / product.buyPrice);
       next = Math.min(next, Math.max(0, affordable));
     }
+    // Beställ aldrig mer än det får plats i lagret (bef. lager + övriga varor).
+    const spaceLeft = storageCapacity(this.state) - storageUsed(this.state) - this.orderedUnits(productId);
+    next = Math.min(next, Math.max(0, spaceLeft));
     this.order[productId] = next;
     this.refreshOrderTexts();
   }
@@ -405,6 +425,13 @@ export class EveningScene extends Phaser.Scene {
     }
     this.totalText.setText(`Beställning: ${this.orderCost} kr`);
     this.moneyAfterText.setText(`Kassa efter beställning: ${this.state.money - this.orderCost} kr`);
+
+    const capacity = storageCapacity(this.state);
+    const filled = storageUsed(this.state) + this.orderedUnits();
+    this.storageText.setText(`Lager: ${filled}/${capacity} platser`);
+    this.storageText.setColor(
+      filled >= capacity ? css(PALETTE.danger.deep) : css(PALETTE.text.muted),
+    );
   }
 
   private buildUpgradeSection(x: number, y: number): void {
@@ -449,10 +476,18 @@ export class EveningScene extends Phaser.Scene {
     const refresh = (): void => {
       const owned = !def.repeatable && this.upgradeSystem.has(def.id);
       const pendingAd = def.id === 'reklam' && this.state.adCampaignPending;
+      const full = def.repeatable && this.upgradeSystem.atCapacity(def);
       const reqMet = this.upgradeSystem.requirementsMet(def);
       if (owned || pendingAd) {
         mark.setTexture('iconCheck').setVisible(true);
         status.setText(pendingAd ? 'Beställd' : 'Köpt');
+        status.setColor(css(PALETTE.success.deep));
+        name.setColor(css(PALETTE.text.muted));
+        bg.setFillStyle(dimmed);
+      } else if (full) {
+        // Allt bemannat/utbyggt: repeaterbar uppgradering har nått sitt tak.
+        mark.setTexture('iconCheck').setVisible(true);
+        status.setText('Fullt');
         status.setColor(css(PALETTE.success.deep));
         name.setColor(css(PALETTE.text.muted));
         bg.setFillStyle(dimmed);

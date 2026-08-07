@@ -16,6 +16,11 @@ export class TimeSystem {
     return Math.max(0, this.elapsedMs - BALANCE.dayDurationMs);
   }
 
+  /** Förfluten öppettid i millisekunder (0 vid öppning). Styr bl.a. raster. */
+  get elapsed(): number {
+    return this.elapsedMs;
+  }
+
   /** Hur långt dagen gått, 0 vid öppning och 1 vid stängning. Styr dagsljuset. */
   get progress(): number {
     return Math.min(1, this.elapsedMs / BALANCE.dayDurationMs);

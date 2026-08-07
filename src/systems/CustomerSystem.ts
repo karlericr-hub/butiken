@@ -18,7 +18,7 @@ export class CustomerSystem {
   constructor(
     private scene: Phaser.Scene,
     private shelves: Map<string, Shelf>,
-    private checkout: Checkout,
+    private checkouts: Checkout[],
     private parcelDesk: ParcelDesk | undefined,
     private state: GameState,
     private economy: EconomySystem,
@@ -80,6 +80,13 @@ export class CustomerSystem {
     );
   }
 
+  /** Kassan med kortast kö – kunderna sprider sig över öppna kassor. */
+  private pickCheckout(): Checkout {
+    return this.checkouts.reduce((best, c) =>
+      c.queue.length < best.queue.length ? c : best,
+    );
+  }
+
   private makeCallbacks() {
     return {
       onLost: () => {
@@ -110,7 +117,7 @@ export class CustomerSystem {
       list,
       this.rollPatience(),
       this.shelves,
-      this.checkout,
+      () => this.pickCheckout(),
       this.doorPoint,
       this.makeCallbacks(),
     );

@@ -20,6 +20,9 @@ export const SaveSystem = {
       if (typeof state.day !== 'number' || !Array.isArray(state.products)) return undefined;
       // Bakåtkompatibilitet: äldre sparfiler saknar dagens försäljningsstatistik.
       state.stats.soldToday ??= {};
+      // Nyare fält som äldre sparfiler saknar.
+      state.storageExpansions ??= 0;
+      state.extraCheckouts ??= 0;
       return state;
     } catch {
       return undefined;
