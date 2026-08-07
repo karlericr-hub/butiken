@@ -57,15 +57,16 @@ export const BALANCE = {
   maxCheckouts: 3,
 
   /**
-   * Kassörernas raster. Två per dag – en kort och en lång – då kassören lämnar
-   * kassan. Tiderna anges som andel av öppettiden; varje kassör förskjuts med
-   * `breakStaggerMs` så att flera kassörer inte går på rast exakt samtidigt.
+   * Personalens raster. Alla anställda (kassörer och påfyllare) tar två raster
+   * per dag – en kort och en lång – då de lämnar sin station. Tiderna anges som
+   * andel av öppettiden; varje anställd förskjuts med `staffBreakStaggerMs` så
+   * att flera inte går på rast exakt samtidigt.
    */
-  cashierShortBreakAtFraction: 0.3,
-  cashierLongBreakAtFraction: 0.62,
-  cashierShortBreakMs: 5000,
-  cashierLongBreakMs: 10_000,
-  cashierBreakStaggerMs: 4000,
+  staffShortBreakAtFraction: 0.3,
+  staffLongBreakAtFraction: 0.62,
+  staffShortBreakMs: 8000,
+  staffLongBreakMs: 15_000,
+  staffBreakStaggerMs: 4500,
 
   /** Paketombud. */
   parcelFee: 18,

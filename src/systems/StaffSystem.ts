@@ -7,13 +7,6 @@ import type { GameScene } from '../scenes/GameScene';
 import { isoToScreen } from '../utils/iso';
 import { BALANCE } from '../config/balance';
 
-/** En anställd påfyllare kopplad till en enda varusort. */
-interface Restocker {
-  entity: StaffEntity;
-  productId: string;
-  nextCheck: number;
-}
-
 /** Ett rastpass: när det börjar (förfluten öppettid) och hur länge det varar. */
 interface Break {
   atMs: number;
@@ -21,28 +14,42 @@ interface Break {
   taken: boolean;
 }
 
-/** En anställd kassör vid en viss kassa, med sitt rastschema. */
-interface Cashier {
+/** Gemensamma rastfält för all personal – kassörer som påfyllare tar rast. */
+interface BreakUnit {
   entity: StaffEntity;
-  index: number;
-  checkout: Checkout;
-  homeSpot: { x: number; y: number };
-  breakSpot: { x: number; y: number };
   breaks: Break[];
   onBreak: boolean;
   /** Förfluten öppettid då rasten är slut. */
   breakEndsAt: number;
+  /** Platsen den anställda återvänder till efter rasten. */
+  homeSpot: { x: number; y: number };
+  /** Platsen i personalrummet dit den anställda går på rast. */
+  breakSpot: { x: number; y: number };
+}
+
+/** En anställd påfyllare kopplad till en enda varusort. */
+interface Restocker extends BreakUnit {
+  productId: string;
+  nextCheck: number;
+}
+
+/** En anställd kassör vid en viss kassa. */
+interface Cashier extends BreakUnit {
+  index: number;
+  checkout: Checkout;
 }
 
 /**
  * Skapar och styr anställda. Kassörerna står i den blå rutan vid sin kassa och
- * tar två raster om dagen (en kort och en lång) då de lämnar kassan – flera
- * kassörer förskjuts så att de inte går samtidigt. Varje påfyllare sköter en
- * enda varusort, så det går att anställa en per hylla.
+ * varje påfyllare sköter en enda varusort, så det går att anställa en per hylla.
+ * All personal tar två raster om dagen (en kort och en lång) då de lämnar sin
+ * station – rasterna förskjuts så att flera inte går samtidigt.
  */
 export class StaffSystem {
   private restockers: Restocker[] = [];
   private cashiers: Cashier[] = [];
+  /** Löpande nummer som förskjuter varje anställds raster och rastplats. */
+  private staffCount = 0;
 
   constructor(
     private scene: GameScene,
@@ -65,17 +72,11 @@ export class StaffSystem {
     if (!checkout || this.cashiers.some((c) => c.index === index)) return;
     const home = checkout.managerSpot;
     const entity = new StaffEntity(this.scene, home.x, home.y, 'kassor');
-    // Rastplatsen förskjuts per kassa så att kassörerna inte trängs ihop.
-    const breakSpot = isoToScreen(2 + index, 8);
     this.cashiers.push({
       entity,
       index,
       checkout,
-      homeSpot: home,
-      breakSpot,
-      breaks: this.buildBreaks(index),
-      onBreak: false,
-      breakEndsAt: 0,
+      ...this.makeBreakFields(home),
     });
   }
 
@@ -95,25 +96,42 @@ export class StaffSystem {
     const shelf = this.shelves.get(productId);
     const home = shelf ? isoToScreen(shelf.gridX, shelf.gridY + 1.4) : isoToScreen(5, 6);
     const entity = new StaffEntity(this.scene, home.x, home.y, 'pafyllare');
-    this.restockers.push({ entity, productId, nextCheck: 0 });
+    this.restockers.push({
+      entity,
+      productId,
+      nextCheck: 0,
+      ...this.makeBreakFields(home),
+    });
   }
 
-  /** Två raster om dagen, förskjutna per kassa så flera inte lämnar samtidigt. */
-  private buildBreaks(index: number): Break[] {
+  /**
+   * Rastfälten för en ny anställd. Två raster (en kort, en lång) och en egen
+   * rastplats i personalrummet, båda förskjutna via `staffCount` så att flera
+   * anställda varken går på rast eller står på samma ruta samtidigt.
+   */
+  private makeBreakFields(home: { x: number; y: number }): Omit<BreakUnit, 'entity'> {
+    const stagger = this.staffCount * BALANCE.staffBreakStaggerMs;
     const day = BALANCE.dayDurationMs;
-    const stagger = index * BALANCE.cashierBreakStaggerMs;
-    return [
-      {
-        atMs: day * BALANCE.cashierShortBreakAtFraction + stagger,
-        durationMs: BALANCE.cashierShortBreakMs,
-        taken: false,
-      },
-      {
-        atMs: day * BALANCE.cashierLongBreakAtFraction + stagger,
-        durationMs: BALANCE.cashierLongBreakMs,
-        taken: false,
-      },
-    ];
+    const breakSpot = isoToScreen(2 + this.staffCount, 8);
+    this.staffCount++;
+    return {
+      breaks: [
+        {
+          atMs: day * BALANCE.staffShortBreakAtFraction + stagger,
+          durationMs: BALANCE.staffShortBreakMs,
+          taken: false,
+        },
+        {
+          atMs: day * BALANCE.staffLongBreakAtFraction + stagger,
+          durationMs: BALANCE.staffLongBreakMs,
+          taken: false,
+        },
+      ],
+      onBreak: false,
+      breakEndsAt: 0,
+      homeSpot: home,
+      breakSpot,
+    };
   }
 
   /**
@@ -127,32 +145,42 @@ export class StaffSystem {
   }
 
   update(time: number, elapsedMs: number): void {
-    for (const r of this.restockers) this.updateRestocker(r, time);
-    for (const c of this.cashiers) this.updateCashier(c, elapsedMs);
+    for (const r of this.restockers) this.updateRestocker(r, time, elapsedMs);
+    for (const c of this.cashiers) this.handleBreaks(c, elapsedMs);
   }
 
-  private updateCashier(c: Cashier, elapsedMs: number): void {
-    const e = c.entity;
-    if (c.onBreak) {
-      // Rasten är slut: gå tillbaka till kassan (den blå rutan).
-      if (elapsedMs >= c.breakEndsAt && !e.isMoving) {
-        c.onBreak = false;
-        e.moveTo(c.homeSpot.x, c.homeSpot.y);
+  /**
+   * Sköter en anställds raster: går på rast när det är dags, står kvar tills den
+   * är slut och går sedan tillbaka till sin station. Returnerar true så länge
+   * den anställda är på rast (och alltså inte kan arbeta).
+   */
+  private handleBreaks(unit: BreakUnit, elapsedMs: number): boolean {
+    const e = unit.entity;
+    if (unit.onBreak) {
+      // Rasten är slut: gå tillbaka till stationen.
+      if (elapsedMs >= unit.breakEndsAt && !e.isMoving) {
+        unit.onBreak = false;
+        e.moveTo(unit.homeSpot.x, unit.homeSpot.y);
       }
-      return;
+      return true;
     }
-    // Starta inte en rast mitt i en expediering eller under förflyttning.
-    if (e.working || e.isMoving) return;
-    const due = c.breaks.find((b) => !b.taken && elapsedMs >= b.atMs);
+    // Starta inte en rast mitt i ett arbete eller under förflyttning.
+    if (e.working || e.isMoving) return false;
+    const due = unit.breaks.find((b) => !b.taken && elapsedMs >= b.atMs);
     if (due) {
       due.taken = true;
-      c.onBreak = true;
-      c.breakEndsAt = elapsedMs + due.durationMs;
-      e.moveTo(c.breakSpot.x, c.breakSpot.y);
+      unit.onBreak = true;
+      unit.breakEndsAt = elapsedMs + due.durationMs;
+      e.moveTo(unit.breakSpot.x, unit.breakSpot.y);
+      return true;
     }
+    return false;
   }
 
-  private updateRestocker(rr: Restocker, time: number): void {
+  private updateRestocker(rr: Restocker, time: number, elapsedMs: number): void {
+    // Påfyllaren tar rast som all annan personal – då fylls inga hyllor på.
+    if (this.handleBreaks(rr, elapsedMs)) return;
+
     const r = rr.entity;
     if (r.working || r.isMoving) return;
     if (time < rr.nextCheck) return;
