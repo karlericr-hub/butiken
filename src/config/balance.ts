@@ -10,8 +10,8 @@ export const BALANCE = {
   shoppingListMax: 3,
 
   pickTimeMs: 900,
-  payTimeMs: 1600,
-  restockTimeMs: 900,
+  payTimeMs: 2400,
+  restockTimeMs: 1500,
 
   maxQueueLength: 5,
 
@@ -34,8 +34,8 @@ export const BALANCE = {
   cardPayTimeMultiplier: 0.55,
   /** Daglig hyra för kortterminalen (dras varje kväll när den ägs). */
   cardTerminalDailyFee: 20,
-  shelfCapacityMultiplier: 1.5,
-  betterShelfRestockMultiplier: 0.6,
+  /** Större hyllor: varje hylla delas i så här många separata lådor. */
+  shelfBoxCount: 2,
   adSpawnBoost: 1.6,
   biggerShopSpawnMultiplier: 1.35,
   biggerShopQueueBonus: 2,

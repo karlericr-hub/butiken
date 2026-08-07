@@ -41,32 +41,39 @@ export class StaffSystem {
     if (time < this.nextRestockCheck) return;
     this.nextRestockCheck = time + BALANCE.staffRestockCheckMs;
 
-    const shelf = this.pickShelfToRestock();
-    if (!shelf) return;
+    const target = this.pickBoxToRestock();
+    if (!target) return;
+    const { shelf, box } = target;
 
     r.working = true;
-    const spot = shelf.standPoint;
+    const spot = shelf.boxStandPoint(box);
+    const anchor = shelf.boxAnchor(box);
     // Står lite vid sidan av så att föreståndaren får plats framför hyllan.
     r.moveTo(spot.x - 18, spot.y - 4, () => {
-      this.scene.showProgress(shelf.x - 20, shelf.y - 60, this.upgrades.restockTimeMs, () => {
-        const units = Math.min(shelf.missingUnits, this.state.storage[shelf.product.id] ?? 0);
+      this.scene.showProgress(anchor.x - 20, anchor.y - 60, this.upgrades.restockTimeMs, () => {
+        const units = Math.min(
+          shelf.boxMissingUnits(box),
+          this.state.storage[shelf.product.id] ?? 0,
+        );
         if (units > 0) {
           this.state.storage[shelf.product.id] -= units;
-          shelf.addStock(units);
-          this.scene.floatText(shelf.x - 20, shelf.y - 60, `+${units}`, '#fb8c00');
+          shelf.addStock(box, units);
+          this.scene.floatText(anchor.x - 20, anchor.y - 60, `+${units}`, '#fb8c00');
         }
         r.working = false;
       });
     });
   }
 
-  /** Den hylla som saknar mest, förutsatt att det finns varor i lagret. */
-  private pickShelfToRestock(): Shelf | undefined {
-    let best: Shelf | undefined;
+  /** Den låda som saknar mest, förutsatt att det finns varor i lagret. */
+  private pickBoxToRestock(): { shelf: Shelf; box: number } | undefined {
+    let best: { shelf: Shelf; box: number; missing: number } | undefined;
     for (const shelf of this.shelves.values()) {
-      if (shelf.missingUnits <= 0) continue;
       if ((this.state.storage[shelf.product.id] ?? 0) <= 0) continue;
-      if (!best || shelf.missingUnits > best.missingUnits) best = shelf;
+      const box = shelf.boxNeedingRestock();
+      if (box < 0) continue;
+      const missing = shelf.boxMissingUnits(box);
+      if (!best || missing > best.missing) best = { shelf, box, missing };
     }
     return best;
   }

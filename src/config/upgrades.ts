@@ -24,8 +24,9 @@ export const UPGRADES: UpgradeDef[] = [
   },
   {
     id: 'battre_hyllor',
-    name: 'Bättre hyllor',
-    description: 'Alla hyllor rymmer 50 % mer och fylls på snabbare.',
+    name: 'Större hyllor',
+    description:
+      'Varje hylla blir två lådor med dubbelt så mycket plats. Lådorna fylls på var för sig – och kunden går automatiskt till den låda som har varor kvar.',
     cost: 300,
     requires: ['kortterminal'],
   },

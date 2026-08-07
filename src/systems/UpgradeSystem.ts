@@ -31,11 +31,8 @@ export class UpgradeSystem {
     }
 
     this.state.upgrades.push(def.id);
-    if (def.id === 'battre_hyllor') {
-      for (const p of this.state.products) {
-        p.shelfCapacity = Math.ceil(p.shelfCapacity * BALANCE.shelfCapacityMultiplier);
-      }
-    }
+    // "Större hyllor" delar varje hylla i två lådor (se shelfBinCount) – ingen
+    // ändring av produktdatan behövs här.
     if (def.id === 'anstalld_kassor') {
       this.state.staff.push({ id: 'kassor', role: 'kassor', dailyWage: BALANCE.cashierWage });
     }
@@ -57,11 +54,9 @@ export class UpgradeSystem {
     return BALANCE.payTimeMs * (this.has('kortterminal') ? BALANCE.cardPayTimeMultiplier : 1);
   }
 
-  /** Tid för att fylla på en hylla (bättre hyllor snabbar upp). */
+  /** Tid för att fylla på en låda. */
   get restockTimeMs(): number {
-    return (
-      BALANCE.restockTimeMs * (this.has('battre_hyllor') ? BALANCE.betterShelfRestockMultiplier : 1)
-    );
+    return BALANCE.restockTimeMs;
   }
 
   /** Kundtakt-multiplikator (större butik lockar fler kunder). */

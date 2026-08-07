@@ -117,7 +117,7 @@ Låses upp i takt med butikens intäkter. Ungefärlig ordning och effekt:
 |---|---|---|
 | Kortterminal | Snabbare betalning | Låg |
 | Fler varutyper | Högre försäljning, mer att sköta | Låg–medel |
-| Bättre hyllor | Snabbare påfyllning, större kapacitet | Medel |
+| Större hyllor | Varje hylla blir två lådor som fylls på var för sig (dubbel kapacitet) | Medel |
 | Anställd (kassör/påfyllare) | Automatiserar en station, dagslön | Medel |
 | Paketombud | Regelbunden intäkt + hantering | Medel |
 | Reklam/marknadsföring | Tillfälligt ökat kundflöde | Medel |

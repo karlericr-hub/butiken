@@ -93,7 +93,7 @@ export class Customer extends Actor {
       return;
     }
     this.state = 'shopping';
-    const spot = this.jitter(shelf.standPoint);
+    const spot = this.jitter(shelf.customerStandPoint());
     this.moveTo(spot.x, spot.y, () => this.pickAt(shelf));
   }
 
