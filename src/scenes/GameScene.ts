@@ -70,8 +70,6 @@ export class GameScene extends Phaser.Scene {
   private interactables: { gx: number; gy: number; act: () => void }[] = [];
   /** Heltäckande lager som färgar om scenen efter tid på dygnet. */
   private daylight?: Phaser.GameObjects.Rectangle;
-  /** Additiva ljusfläckar på golvet framför fönstren. */
-  private lightPools: Phaser.GameObjects.Sprite[] = [];
   /** Återanvända partikelutsläpp – billigare än att skapa nya vid varje effekt. */
   private emitters: Record<string, Phaser.GameObjects.Particles.ParticleEmitter> = {};
 
@@ -90,7 +88,6 @@ export class GameScene extends Phaser.Scene {
     this.paymentBusy = [];
     this.parcelBusy = false;
     this.interactables = [];
-    this.lightPools = [];
     this.emitters = {};
     this.daylight = undefined;
 
@@ -682,10 +679,13 @@ export class GameScene extends Phaser.Scene {
     const ne = isoToScreen(GRID_W, 0);
     const w2 = isoToScreen(0, 8);
 
+    // Tapetrand och takkant utgår från nordvästra väggens bortre hörn vid
+    // dörröppningen (w2.x, w2.y − H). De ska sluta i liv med väggen och inte
+    // fortsätta ut över entrén.
     // Tapetrand i ögonhöjd längs båda väggarna.
     g.lineStyle(4, PALETTE.wall.stripe, 0.75);
     g.beginPath();
-    g.moveTo(w2.x - 32, w2.y + 16 - H + 22);
+    g.moveTo(w2.x, w2.y - H + 22);
     g.lineTo(nw.x, nw.y - H + 22);
     g.lineTo(ne.x, ne.y - H + 22);
     g.strokePath();
@@ -693,13 +693,13 @@ export class GameScene extends Phaser.Scene {
     // Takkant som knyter ihop väggarna
     g.lineStyle(4, PALETTE.wall.trim, 1);
     g.beginPath();
-    g.moveTo(w2.x - 32, w2.y + 16 - H);
+    g.moveTo(w2.x, w2.y - H);
     g.lineTo(nw.x, nw.y - H);
     g.lineTo(ne.x, ne.y - H);
     g.strokePath();
     g.lineStyle(1.5, lighten(PALETTE.wall.trim, 22), 0.9);
     g.beginPath();
-    g.moveTo(w2.x - 32, w2.y + 14 - H);
+    g.moveTo(w2.x, w2.y - 2 - H);
     g.lineTo(nw.x, nw.y - 2 - H);
     g.lineTo(ne.x, ne.y - 2 - H);
     g.strokePath();
@@ -708,13 +708,15 @@ export class GameScene extends Phaser.Scene {
     this.drawWindow(g, 3.1, 5.3, H);
     this.drawWindow(g, 6.4, 8.6, H);
 
-    // Dörrkarm vid väggöppningens kant
+    // Dörrkarm vid väggöppningens kant. Karmen ritas på ett eget lager med
+    // världsdjup (dörröppningens framkant) så att kunder som går ut passerar
+    // bakom karmen istället för framför den.
     const post = isoToScreen(0, 8);
-    g.fillStyle(PALETTE.wood.dark, 1);
-    g.fillRect(post.x - 35, post.y + 16 - H - 4, 6, H + 8);
-    g.fillStyle(lighten(PALETTE.wood.dark, 12), 1);
-    g.fillRect(post.x - 35, post.y + 16 - H - 4, 2, H + 8);
-
+    const frame = this.add.graphics().setDepth(post.y + 16);
+    frame.fillStyle(PALETTE.wood.dark, 1);
+    frame.fillRect(post.x - 35, post.y + 16 - H - 4, 6, H + 8);
+    frame.fillStyle(lighten(PALETTE.wood.dark, 12), 1);
+    frame.fillRect(post.x - 35, post.y + 16 - H - 4, 2, H + 8);
   }
 
   /** Ett fönster på den bortre väggen, mellan rutnätspunkterna a och b. */
@@ -759,16 +761,6 @@ export class GameScene extends Phaser.Scene {
     g.lineStyle(2.5, PALETTE.wood.dark, 1);
     frame(0, top, bottom);
     g.strokePath();
-
-    // Ljuspöl på golvet snett framför fönstret – ljuset faller in i rummet,
-    // så pölen läggs ut i rutnätet i stället för i skärmkoordinater.
-    const poolPos = isoToScreen((a + b) / 2 + 0.9, 1.4);
-    const pool = this.add.sprite(poolPos.x, poolPos.y + 16, 'lightPool');
-    pool.setDepth(DEPTH.lightPool);
-    pool.setScale(INV_SCALE * 2.4, INV_SCALE * 2.4);
-    pool.setBlendMode(Phaser.BlendModes.ADD);
-    pool.setTint(0xfff0c4);
-    this.lightPools.push(pool);
   }
 
   /** Dekor: krukväxter och en entréskylt. */
@@ -806,7 +798,10 @@ export class GameScene extends Phaser.Scene {
     const door = isoToScreen(0, 8.6);
     const w = 92;
     const h = 30;
-    const sign = this.add.container(door.x - 40, door.y - 74).setDepth(DEPTH.signage);
+    // Skylten sitter vid dörröppningens framkant och får därför världsdjup
+    // (door.y) istället för det fasta bakgrundsdjupet, så att kunder som går ut
+    // passerar bakom skylten.
+    const sign = this.add.container(door.x - 40, door.y - 74).setDepth(door.y);
 
     const board = this.add.graphics();
     board.fillStyle(PALETTE.wood.deep, 0.22);
@@ -879,7 +874,7 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * Dagens ljus: sval morgon → neutral middag → varm eftermiddag → gyllene
-   * kväll. Ljuspölarna från fönstren följer med och bleknar mot stängning.
+   * kväll.
    */
   private updateDaylight(): void {
     if (!this.daylight) return;
@@ -900,10 +895,6 @@ export class GameScene extends Phaser.Scene {
       strength = 0.12 + 0.34 * t;
     }
     this.daylight.setFillStyle(tint, strength);
-
-    // Fönsterljuset är starkast mitt på dagen.
-    const poolAlpha = 0.35 + Math.sin(Math.PI * Phaser.Math.Clamp(p, 0, 1)) * 0.55;
-    for (const pool of this.lightPools) pool.setAlpha(poolAlpha);
   }
 
   /**
