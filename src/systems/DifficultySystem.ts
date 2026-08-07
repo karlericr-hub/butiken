@@ -17,7 +17,7 @@ export class DifficultySystem {
 
   constructor(
     private state: GameState,
-    private checkout: Checkout,
+    private checkouts: Checkout[],
     private shelves: Map<string, Shelf>,
   ) {
     this.moneyAtDayStart = state.money;
@@ -28,7 +28,7 @@ export class DifficultySystem {
     if (time < this.nextSampleAt) return;
     this.nextSampleAt = time + BALANCE.difficulty.sampleIntervalMs;
     this.samples++;
-    this.queueTotal += this.checkout.queue.length;
+    this.queueTotal += this.checkouts.reduce((sum, c) => sum + c.queue.length, 0);
     for (const shelf of this.shelves.values()) {
       if (shelf.isEmpty) {
         this.emptyShelfSamples++;

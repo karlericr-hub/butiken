@@ -45,6 +45,26 @@ export const BALANCE = {
   restockerWage: 50,
   staffRestockCheckMs: 1500,
 
+  /** Lager: grundplats och hur mycket varje utbyggnad ("Extra lagerutrymme") ger. */
+  baseStorageCapacity: 40,
+  storageExpansionAmount: 30,
+  /** Hur många lagerutbyggnader som får köpas. */
+  maxStorageExpansions: 6,
+
+  /** Kassor: hur många det får finnas totalt (huvudkassan inräknad). */
+  maxCheckouts: 3,
+
+  /**
+   * Kassörernas raster. Två per dag – en kort och en lång – då kassören lämnar
+   * kassan. Tiderna anges som andel av öppettiden; varje kassör förskjuts med
+   * `breakStaggerMs` så att flera kassörer inte går på rast exakt samtidigt.
+   */
+  cashierShortBreakAtFraction: 0.3,
+  cashierLongBreakAtFraction: 0.62,
+  cashierShortBreakMs: 5000,
+  cashierLongBreakMs: 10_000,
+  cashierBreakStaggerMs: 4000,
+
   /** Paketombud. */
   parcelFee: 18,
   parcelSpawnMinMs: 22_000,

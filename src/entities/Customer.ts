@@ -44,6 +44,10 @@ export class Customer extends Actor {
   private patienceLeftMs: number;
   private moodFace?: Phaser.GameObjects.Sprite;
   private basketSprite?: Phaser.GameObjects.Sprite;
+  /** Kassan/disken kunden köar vid. Väljs (bland flera kassor) vid kassagången. */
+  private station!: QueueStation;
+  /** Väljer en station först när kunden är klar att köa (kortaste kön). */
+  private pickStation?: () => QueueStation;
 
   constructor(
     scene: Phaser.Scene,
@@ -52,7 +56,7 @@ export class Customer extends Actor {
     shoppingList: string[],
     patienceMs: number,
     private shelves: Map<string, Shelf>,
-    private station: QueueStation,
+    station: QueueStation | (() => QueueStation),
     private doorPoint: { x: number; y: number },
     private callbacks: CustomerCallbacks,
     /** 'paket'-kunder går direkt till sin station utan att handla. */
@@ -65,6 +69,10 @@ export class Customer extends Actor {
       kind === 'paket' ? 'parcelcust' : `cust${Phaser.Math.Between(0, CUSTOMER_VARIANTS - 1)}`,
       BALANCE.customerSpeed,
     );
+    // En fast station (paketdisk) sätts direkt; en väljare (flera kassor)
+    // sparas och används först när kunden ska köa.
+    if (typeof station === 'function') this.pickStation = station;
+    else this.station = station;
     this.shoppingList = [...shoppingList];
     this.patienceTotalMs = patienceMs;
     this.patienceLeftMs = patienceMs;
@@ -143,6 +151,8 @@ export class Customer extends Actor {
       this.leave();
       return;
     }
+    // Välj kassa nu (den med kortast kö) om ingen fast station är satt.
+    if (!this.station && this.pickStation) this.station = this.pickStation();
     if (this.station.queue.length >= this.station.maxLength) {
       this.callbacks.onLost(this);
       this.leave();

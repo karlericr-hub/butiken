@@ -29,10 +29,29 @@ export function shelfBinCount(state: GameState): number {
   return state.upgrades.includes('battre_hyllor') ? BALANCE.shelfBoxCount : 1;
 }
 
+/** Total lagerkapacitet: bas plus köpta utbyggnader. */
+export function storageCapacity(state: GameState): number {
+  return BALANCE.baseStorageCapacity + state.storageExpansions * BALANCE.storageExpansionAmount;
+}
+
+/** Antal enheter som just nu ligger i lagret (summan över alla varor). */
+export function storageUsed(state: GameState): number {
+  return Object.values(state.storage).reduce((sum, n) => sum + (n ?? 0), 0);
+}
+
+/** Antal kassor totalt (huvudkassan plus köpta extrakassor). */
+export function checkoutCount(state: GameState): number {
+  return 1 + state.extraCheckouts;
+}
+
 export interface StaffMember {
   id: string;
   role: 'kassor' | 'pafyllare';
   dailyWage: number;
+  /** Påfyllare: den varusort denna anställd sköter (fyller bara en sort). */
+  productId?: string;
+  /** Kassör: vilken kassa (0 = huvudkassan) den anställda står vid. */
+  checkoutIndex?: number;
 }
 
 export interface GameState {
@@ -45,6 +64,10 @@ export interface GameState {
   isParcelAgent: boolean;
   /** Varor i lagerrummet (levererade men inte utställda), per produkt-id. */
   storage: Record<string, number>;
+  /** Antal köpta lagerutbyggnader – varje utbyggnad ger mer lagerplats. */
+  storageExpansions: number;
+  /** Antal extra kassor som köpts till (utöver huvudkassan). */
+  extraCheckouts: number;
   /** Beställning som levereras under nästa dag, per produkt-id. */
   pendingOrder: Record<string, number>;
   /** Antal kvällar i rad med negativt saldo. */
@@ -82,6 +105,8 @@ export function createInitialState(startMoney: number, products: Product[]): Gam
     storage: Object.fromEntries(
       products.map((p) => [p.id, p.requiresUpgrade ? 0 : p.shelfCapacity]),
     ),
+    storageExpansions: 0,
+    extraCheckouts: 0,
     pendingOrder: {},
     debtEvenings: 0,
     loanTaken: false,
