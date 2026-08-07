@@ -36,6 +36,8 @@ export class Customer extends Actor {
   readonly basket: Product[] = [];
   mood: Mood = 'green';
   private moodLevel = 0;
+  /** Sämsta humörnivån hittills – humöret kan aldrig bli bättre, bara sämre. */
+  private worstMoodLevel = 0;
   /** Antal varor kunden inte kunde få tag på (tom eller saknad hylla). */
   private missingCount = 0;
   private shoppingList: string[];
@@ -225,16 +227,19 @@ export class Customer extends Actor {
 
   /**
    * Räknar ut humörnivån (0 gladast … 3 argast). Varje saknad vara sänker
-   * humöret ett hack, och otålighet i kön sänker det ytterligare.
+   * humöret ett hack, och otålighet i kön sänker det ytterligare. Humöret
+   * ratchetar – det kan aldrig bli bättre, bara sämre.
    */
   private computeMoodLevel(): number {
     let level = this.missingCount;
     if (this.inQueue) {
       const ratio = this.patienceLeftMs / this.patienceTotalMs;
-      if (ratio <= 0.2) level += 2;
-      else if (ratio <= 0.5) level += 1;
+      if (ratio <= 0.5) level += 2;
+      else if (ratio <= 0.75) level += 1;
     }
-    return Phaser.Math.Clamp(level, 0, MOOD_NAMES.length - 1);
+    // Humöret får aldrig gå tillbaka mot det gladare – bara neråt.
+    this.worstMoodLevel = Math.max(this.worstMoodLevel, level);
+    return Phaser.Math.Clamp(this.worstMoodLevel, 0, MOOD_NAMES.length - 1);
   }
 
   private get inQueue(): boolean {
