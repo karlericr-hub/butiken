@@ -26,7 +26,7 @@ export const BALANCE = {
   closeHour: 20,
   /** Hur långt in på dagen leveransen anländer (andel av öppettiden). */
   deliveryArrivalFraction: 0.15,
-  unloadTimeMs: 1400,
+  unloadTimeMs: 2800,
   /** Kunder som är kvar så här länge efter stängning skickas hem. */
   closingGraceMs: 40_000,
 
@@ -50,6 +50,8 @@ export const BALANCE = {
   storageExpansionAmount: 30,
   /** Hur många lagerutbyggnader som får köpas. */
   maxStorageExpansions: 6,
+  /** Extra hyra per köpt lagerutbyggnad (dras varje kväll). */
+  storageRentPerExpansion: 15,
 
   /** Kassor: hur många det får finnas totalt (huvudkassan inräknad). */
   maxCheckouts: 3,

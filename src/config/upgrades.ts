@@ -49,7 +49,8 @@ export const UPGRADES: UpgradeDef[] = [
   {
     id: 'lagerutrymme',
     name: 'Extra lagerutrymme',
-    description: 'Bygger ut lagret så att det får plats med fler varor. Kan köpas flera gånger.',
+    description:
+      'Bygger ut lagret så att det får plats med fler varor. Höjer hyran med 15 kr/dag per utbyggnad. Kan köpas flera gånger.',
     cost: 180,
     repeatable: true,
   },

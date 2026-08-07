@@ -43,6 +43,7 @@ export class EveningScene extends Phaser.Scene {
   /** Stänger ett öppet inmatningsfält för beställning (om något är öppet). */
   private activeInputCleanup?: (apply: boolean) => void;
   private cardTerminalFeeToday = 0;
+  private storageRentToday = 0;
   /** Sant medan scenen tonar ut, så att knappen bara kan tryckas en gång. */
   private leaving = false;
 
@@ -64,7 +65,9 @@ export class EveningScene extends Phaser.Scene {
     this.cardTerminalFeeToday = this.state.upgrades.includes('kortterminal')
       ? BALANCE.cardTerminalDailyFee
       : 0;
-    const fixedCosts = BALANCE.rentPerDay + this.wagesToday + this.cardTerminalFeeToday;
+    this.storageRentToday = this.state.storageExpansions * BALANCE.storageRentPerExpansion;
+    const fixedCosts =
+      BALANCE.rentPerDay + this.storageRentToday + this.wagesToday + this.cardTerminalFeeToday;
     this.state.money -= fixedCosts;
     this.state.stats.costsToday += fixedCosts;
 
@@ -139,7 +142,11 @@ export class EveningScene extends Phaser.Scene {
     const s = this.state.stats;
     const profit = s.revenueToday - s.costsToday;
     const purchases =
-      s.costsToday - BALANCE.rentPerDay - this.wagesToday - this.cardTerminalFeeToday;
+      s.costsToday -
+      BALANCE.rentPerDay -
+      this.storageRentToday -
+      this.wagesToday -
+      this.cardTerminalFeeToday;
 
     this.sectionTitle(x, y, 'Dagens resultat');
 
@@ -152,6 +159,9 @@ export class EveningScene extends Phaser.Scene {
       ['Varuinköp', `-${purchases} kr`, bad],
       ['Hyra', `-${BALANCE.rentPerDay} kr`, bad],
     ];
+    if (this.storageRentToday > 0) {
+      rows.push(['Lagerhyra', `-${this.storageRentToday} kr`, bad]);
+    }
     if (this.cardTerminalFeeToday > 0) {
       rows.push(['Kortterminal', `-${this.cardTerminalFeeToday} kr`, bad]);
     }
