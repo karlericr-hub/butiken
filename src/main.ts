@@ -38,7 +38,10 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: '#9fd6e8',
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // Centreringen sköts av #game (flexbox i index.html). Phasers egen
+    // autoCenter skulle lägga marginaler ovanpå flex-centreringen, vilket
+    // dubbelcentrerar och skjuter duken ur läge på breda mobilskärmar.
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   scene: [BootScene, MenuScene, GameScene, EveningScene, GameOverScene],
 };
