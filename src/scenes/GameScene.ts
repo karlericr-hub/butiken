@@ -124,6 +124,12 @@ export class GameScene extends Phaser.Scene {
     // Bygg navigeringsrutnätet: hyllor, kassa och paketdisk blockeras så att
     // figurerna går runt dem i stället för rakt igenom.
     const navGrid = new NavGrid();
+    // Väggrutorna längs de bortre kanterna blockeras så att figurerna håller sig
+    // på golvplattorna och inte går ut på/igenom väggen. Nordöstra väggen ligger
+    // längs gy = 0 (hela raden) och nordvästra väggen längs gx = 0 (gy 0–7);
+    // dörröppningen vid gy 8–9 lämnas fri så att kunderna kan komma in.
+    for (let gx = 0; gx < GRID_W; gx++) navGrid.block(gx, 0);
+    for (let gy = 1; gy <= 7; gy++) navGrid.block(0, gy);
     for (const shelf of this.shelves.values()) navGrid.block(shelf.gridX, shelf.gridY);
     navGrid.block(this.checkout.gridX, this.checkout.gridY);
     if (this.parcelDesk) navGrid.block(this.parcelDesk.gridX, this.parcelDesk.gridY);
